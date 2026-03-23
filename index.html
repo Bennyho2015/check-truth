@@ -28,19 +28,17 @@
         <div style="text-align:center; font-weight:bold; color:var(--dark);">真情假意 照妖鏡</div>
         <div class="mission"><b>宗旨：</b>本站不設評論。透過 AI 識別數據含水量。紅/黃色代表煽動、謬誤或捏造。認同與否，請自行判斷。</div>
         
-        <textarea id="userInput" placeholder="把文字、廣告詞或新聞貼在這裡..."></textarea>
+        <textarea id="userInput" placeholder="把文字貼在這裡..."></textarea>
         <button class="btn-main" id="filterBtn" onclick="runAI()">💨 開始過濾 (Filter)</button>
 
         <div id="result-area">
             <div id="tags"></div>
         </div>
-        <div style="margin-top:auto; text-align:center; font-size:11px; color:#bdc3c7; padding:20px 0;">
-            © LaoJi Project | 數據驅動 · 拒絕盲從
-        </div>
     </div>
 
     <script>
         const API_KEY = "70ef83fa47ab48a7a9be47b64e8d0131.8gdNt6QMD8MPeoTe"; 
+
         async function runAI() {
             const text = document.getElementById('userInput').value;
             if(!text) return alert('請先貼入內容');
@@ -69,17 +67,17 @@
                 
                 const data = await response.json();
                 
-                // ✅ 關鍵修復點：data.choices 後面必須接 [0]
+                // ✅ 這次絕對正確：增加了 [0] 來讀取第一條結果
                 const resultText = data.choices[0].message.content;
                 
-                // ✅ 清理反引號標籤，保留空格
+                // 清理反引號，顯示結果
                 tags.innerHTML = resultText.replace(/```html/g, '').replace(/```/g, '');
                 
                 let num = parseInt(document.getElementById('countNum').innerText);
                 document.getElementById('countNum').innerText = num + 1;
             } catch (error) {
                 console.error(error);
-                tags.innerHTML = '<div class="tag-red">連線失敗。請確保在 Vercel 網址打開，並檢查 API Key。</div>';
+                tags.innerHTML = '<div class="tag-red">連線失敗。請確認在 Vercel 網址打開，並檢查 API Key 是否正確。</div>';
             } finally {
                 btn.disabled = false;
                 btn.innerText = "💨 開始過濾 (Filter)";
