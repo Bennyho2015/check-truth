@@ -1,4 +1,6 @@
 
+
+
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -7,123 +9,84 @@
     <title>Fact or Fart - 照妖鏡</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans">
-    <div class="max-w-md mx-auto p-6">
-        <header class="text-center mb-8 pt-4">
-            <h1 class="text-4xl font-black text-slate-800 mb-2">💨 Fact or Fart</h1>
-            <p class="text-blue-700 font-bold text-xl tracking-widest">真情假意 照妖鏡</p>
-            <div class="mt-4 p-4 bg-white rounded-2xl text-sm border-l-8 border-blue-500 shadow-sm text-left">
-                <p class="font-bold">宗旨：本站不設評論。透過數據識別真假。</p>
-            </div>
-        </header>
+<body class="bg-slate-50 min-h-screen font-sans p-6 text-center">
+    <h1 class="text-4xl font-black mb-2">💨 Fact or Fart</h1>
+    <p class="text-blue-700 font-bold mb-8">真情假意 照妖鏡</p>
 
-        <div class="bg-white rounded-[2.5rem] p-8 text-center shadow-2xl border border-slate-100">
-            <!-- 拍照觸發區：改用 Label 確保全兼容 -->
-            <div id="upload-zone">
-                <label for="camera-input" class="cursor-pointer block w-full py-10">
-                    <div class="text-7xl mb-4">📸</div>
-                    <div class="text-2xl font-black text-blue-600">點擊拍照 / 防騙避坑</div>
-                    <p class="text-gray-400 mt-3 font-medium">消費者專用：一拍即鑑定</p>
-                </label>
-            </div>
-
-            <!-- 預覽區：確保按鈕與圖片同時出現 -->
-            <div id="preview-zone" style="display:none;">
-                <img id="preview-img" class="max-h-80 mx-auto rounded-2xl shadow-md border-4 border-slate-50 mb-6" onclick="document.getElementById('zoom-modal').style.display='flex'">
-                <div class="flex flex-col gap-4">
-                    <button id="start-btn" type="button" onclick="startAnalysis(event)" class="w-full py-5 bg-blue-600 text-white rounded-3xl text-2xl font-black shadow-lg">🚀 開始鑑定</button>
-                    <button type="button" onclick="window.location.reload()" class="text-slate-400 font-bold text-sm">❌ 重拍 (Retake)</button>
-                </div>
-            </div>
+    <div class="bg-white rounded-[2rem] p-8 shadow-xl border border-slate-100 mb-6">
+        <label for="camera-input" class="cursor-pointer block w-full py-10" id="upload-btn">
+            <div class="text-7xl mb-4">📸</div>
+            <div class="text-2xl font-black text-blue-600">點擊拍照 / 防騙避坑</div>
+            <p class="text-gray-400 mt-2 text-sm">消費者專用：一拍即鑑定</p>
+        </label>
+        
+        <div id="preview-area" style="display:none;">
+            <img id="p-img" class="max-h-60 mx-auto rounded-xl shadow-md mb-6" onclick="window.location.reload()">
+            <button id="go-btn" onclick="go()" class="w-full py-5 bg-blue-600 text-white rounded-3xl text-2xl font-black">🚀 開始鑑定</button>
+            <p class="text-gray-400 mt-4 text-xs">拍糊了？點圖片重拍</p>
         </div>
-
-        <div id="result-zone" style="display:none;" class="mt-6 p-8 bg-white border-2 border-blue-100 rounded-[2.5rem] shadow-2xl">
-            <h2 class="text-xl font-black mb-4 text-slate-800 border-b pb-4">⚖️ 專家鑑定報告</h2>
-            <div id="analysis-text" class="whitespace-pre-wrap leading-relaxed text-slate-700 text-lg"></div>
-        </div>
-
-        <!-- 修正：移除 capture 標籤，這能徹底解決蘋果黑屏問題 -->
-        <input type="file" id="camera-input" accept="image/*" class="hidden" onchange="handleFile(this)">
     </div>
 
-    <div id="zoom-modal" style="display:none;" class="fixed inset-0 bg-black/95 z-50 items-center justify-center p-4" onclick="this.style.display='none'">
-        <img id="zoom-img" class="max-w-full max-h-[85vh] object-contain">
+    <div id="report" style="display:none;" class="p-6 bg-white border-2 border-blue-100 rounded-[2rem] text-left shadow-xl">
+        <h2 class="font-black border-b pb-2 mb-4">⚖️ 專家鑑定報告</h2>
+        <div id="txt" class="text-lg leading-relaxed"></div>
     </div>
+
+    <input type="file" id="camera-input" accept="image/*" class="hidden" onchange="load(this)">
 
     <script>
-        let pureBase64Data = "";
-        const API_KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; 
+        let b64 = "";
+        const KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; // <-- 填入密鑰
 
-        function handleFile(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        // 強制縮小到 800 像素，防止手機內存爆掉閃退
-                        const maxW = 800;
-                        const scale = Math.min(maxW / img.width, 1);
-                        canvas.width = img.width * scale;
-                        canvas.height = img.height * scale;
-                        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                        
-                        const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                        // 【終極修正】：只拿數據，不拿逗號
-                        pureBase64Data = dataUrl.split(',')[1]; 
-                        
-                        document.getElementById('preview-img').src = dataUrl;
-                        document.getElementById('zoom-img').src = dataUrl;
-                        document.getElementById('upload-zone').style.display = 'none';
-                        document.getElementById('preview-zone').style.display = 'block';
-                    };
-                    img.src = e.target.result;
+        function load(input) {
+            if (!input.files[0]) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const cvs = document.createElement('canvas');
+                    const scale = Math.min(800 / img.width, 1); // 強制壓縮到 800 像素，防安卓閃退
+                    cvs.width = img.width * scale;
+                    cvs.height = img.height * scale;
+                    cvs.getContext('2d').drawImage(img, 0, 0, cvs.width, cvs.height);
+                    const data = cvs.toDataURL('image/jpeg', 0.5); // 壓縮質量
+                    b64 = data.split(',')[1]; // 獲取純數據
+                    document.getElementById('p-img').src = data;
+                    document.getElementById('upload-btn').style.display = 'none';
+                    document.getElementById('preview-area').style.display = 'block';
                 };
-                reader.readAsDataURL(input.files[0]);
-            }
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(input.files[0]);
         }
 
-        async function startAnalysis(ev) {
-            if(ev) ev.preventDefault();
-            const btn = document.getElementById('start-btn');
-            const resultZone = document.getElementById('result-zone');
-            const analysisText = document.getElementById('analysis-text');
-            if(!pureBase64Data) return;
-
-            btn.disabled = true;
-            btn.innerText = "🔍 正在過濾...";
-            resultZone.style.display = 'block';
-            analysisText.innerText = "鑑定專家正在查看，請稍候...";
+        async function go() {
+            const btn = document.getElementById('go-btn');
+            const txt = document.getElementById('txt');
+            btn.disabled = true; btn.innerText = "🔍 正在捉妖...";
+            document.getElementById('report').style.display = 'block';
+            txt.innerText = "鑑定中...";
 
             try {
-                const url = `https://generativelanguage.googleapis.com{API_KEY}`;
-                const response = await fetch(url, {
+                const url = `https://generativelanguage.googleapis.com{KEY}`;
+                const res = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: 
-                        }]
+                        contents: [{ parts: [
+                            { text: "分析圖中真假：1.鑑定【🟢事實/🟡誤導/🔴屁話】2.總結 3.數據證據 4.建議。用繁體中文報告。" },
+                            { inline_data: { mime_type: "image/jpeg", data: b64 } }
+                        ]}]
                     })
                 });
-
-                const data = await response.json();
-                if (data.candidates && data.candidates[0].content.parts[0].text) {
-                    analysisText.innerText = data.candidates[0].content.parts[0].text;
-                } else {
-                    analysisText.innerText = "⚠️ 鑑定失敗，請嘗試拍照更清楚一點。";
-                }
-            } catch (err) {
-                analysisText.innerText = "⚠️ 連線出錯：" + err.message;
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "🚀 重新鑑定";
-            }
+                const d = await res.json();
+                txt.innerText = d.candidates[0].content.parts[0].text;
+            } catch (e) { txt.innerText = "⚠️ 失敗：" + e.message; }
+            btn.disabled = false; btn.innerText = "🚀 重新鑑定";
         }
     </script>
 </body>
 </html>
-
-
 
 
 
