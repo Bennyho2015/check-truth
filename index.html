@@ -81,23 +81,26 @@
 
         // 拍照逻辑
         captureBtn.onclick = () => {
-            // 保持原始分辨率
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            
-            // 导出 Base64
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            imageData = dataUrl.split(',')[1]; // 只要纯数据部分
-            
-            video.style.display = 'none';
-            photoPreview.src = dataUrl;
-            photoPreview.style.display = 'block';
-            
-            captureBtn.style.display = 'none';
-            retakeBtn.style.display = 'inline-block';
-            confirmBtn.style.display = 'inline-block';
-        };
+    // 稍微降低画布大小以提升速度和兼容性
+    const scale = 0.8; 
+    canvas.width = video.videoWidth * scale;
+    canvas.height = video.videoHeight * scale;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // 关键修复：使用 0.6 的质量压缩，确保体积小于 1MB
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+    // 只取 Base64 纯字符串
+    imageData = dataUrl.split(',')[1]; 
+    
+    video.style.display = 'none';
+    photoPreview.src = dataUrl;
+    photoPreview.style.display = 'block';
+    
+    captureBtn.style.display = 'none';
+    retakeBtn.style.display = 'inline-block';
+    confirmBtn.style.display = 'inline-block';
+};
+
 
         // 重拍逻辑
         retakeBtn.onclick = () => {
