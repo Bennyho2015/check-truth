@@ -1,8 +1,4 @@
 
-
-
-
-
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -24,11 +20,12 @@
         
         <div id="preview-area" style="display:none;">
             <img id="p-img" class="max-h-60 mx-auto rounded-xl shadow-md mb-6" onclick="window.location.reload()">
-            <button id="go-btn" onclick="go()" class="w-full py-5 bg-blue-600 text-white rounded-3xl text-2xl font-black">🚀 開始鑑定</button>
+            <button id="go-btn" onclick="go(event)" class="w-full py-5 bg-blue-600 text-white rounded-3xl text-2xl font-black shadow-lg">🚀 開始鑑定</button>
+            <p class="text-gray-400 mt-4 text-xs">拍糊了？點圖片重拍</p>
         </div>
     </div>
 
-    <div id="report" style="display:none;" class="p-6 bg-white border-2 border-blue-100 rounded-[2rem] text-left shadow-xl animate-fade-in">
+    <div id="report" style="display:none;" class="p-6 bg-white border-2 border-blue-100 rounded-[2rem] text-left shadow-xl">
         <h2 class="font-black border-b pb-2 mb-4 text-slate-800">⚖️ 專家鑑定報告</h2>
         <div id="txt" class="text-lg leading-relaxed text-slate-700"></div>
     </div>
@@ -36,8 +33,8 @@
     <input type="file" id="camera-input" accept="image/*" class="hidden" onchange="load(this)">
 
     <script>
-        let b64Data = "";
-        const KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; // <--- 確保這裡填對了！
+        let finalImageString = ""; // 儲存最終的純數據字串
+        const KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; 
 
         function load(input) {
             if (!input.files[0]) return;
@@ -50,12 +47,13 @@
                     cvs.width = img.width * scale;
                     cvs.height = img.height * scale;
                     cvs.getContext('2d').drawImage(img, 0, 0, cvs.width, cvs.height);
-                    const data = cvs.toDataURL('image/jpeg', 0.6);
+                    const dataUrl = cvs.toDataURL('image/jpeg', 0.6);
                     
-                    // 【核心修正】：一定要取 [1]，才是 Google 要的純數據！
-                    b64Data = data.split(',')[1]; 
+                    // 【終極修正】：取索引 1，並確保它是一個純字串
+                    const parts = dataUrl.split(',');
+                    finalImageString = parts[1]; 
                     
-                    document.getElementById('p-img').src = data;
+                    document.getElementById('p-img').src = dataUrl;
                     document.getElementById('upload-btn').style.display = 'none';
                     document.getElementById('preview-area').style.display = 'block';
                 };
@@ -64,19 +62,18 @@
             reader.readAsDataURL(input.files[0]);
         }
 
-        async function go() {
+        async function go(ev) {
+            if(ev) ev.preventDefault(); // 阻止瀏覽器默認行為
             const btn = document.getElementById('go-btn');
             const txt = document.getElementById('txt');
-            if(!b64Data) return;
+            if(!finalImageString) return;
 
-            btn.disabled = true; 
-            btn.innerText = "🔍 正在過濾...";
+            btn.disabled = true; btn.innerText = "🔍 正在過濾...";
             document.getElementById('report').style.display = 'block';
-            txt.innerText = "鑑定專家正在仔細查看成分，請稍候...";
+            txt.innerText = "專家正在查看成分，請稍候...";
 
-            const url = `https://generativelanguage.googleapis.com{KEY}`;
-            
             try {
+                const url = `https://generativelanguage.googleapis.com{KEY}`;
                 const res = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -91,13 +88,12 @@
                 } else if (d.error) {
                     txt.innerText = "⚠️ Google 報錯：" + d.error.message;
                 } else {
-                    txt.innerText = "⚠️ 鑑定失敗，請嘗試拍照更清楚一點。";
+                    txt.innerText = "⚠️ 鑑定失敗，請確保拍到清晰文字。";
                 }
             } catch (e) { 
-                txt.innerText = "⚠️ 系統錯誤：" + e.message; 
+                txt.innerText = "⚠️ 連線出錯：" + e.message; 
             } finally {
-                btn.disabled = false; 
-                btn.innerText = "🚀 重新鑑定";
+                btn.disabled = false; btn.innerText = "🚀 重新鑑定";
             }
         }
     </script>
