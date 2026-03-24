@@ -1,49 +1,46 @@
+// api/analyze.js (加固版)
 export default async function handler(req, res) {
-  // 只允许 POST 请求
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { image } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY;
 
-  // 基础检查
-  if (!API_KEY) return res.status(500).json({ error: "服务器未配置 API_KEY" });
+  if (!API_KEY) return res.status(500).json({ error: "环境变量 GEMINI_API_KEY 未配置" });
   if (!image) return res.status(400).json({ error: "未接收到图片数据" });
 
   try {
-    // 确保拿到的是纯 Base64 字符串（处理前端传来的数组或字符串）
-    const base64Data = Array.isArray(image) ? image[1] : image;
+    // 确保处理纯 Base64 数据
+    const base64Data = Array.isArray(image) ? image : image;
+    
+    // 使用标准的 API URL
+    const url = `https://generativelanguage.googleapis.com{API_KEY}`;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com{API_KEY}`, {
+    const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: "你是一个事实核查专家。请分析图片中文字的真伪。直接输出 HTML 格式回复，不要包含 Markdown 符号。严重错误用 <div class='fact-box fact-red'>，误导用 <div class='fact-box fact-yellow'>，真实用 <div class='fact-box fact-green'>。请简明扼要。" },
-            { inline_data: { mime_type: "image/jpeg", "data": base64Data } }
-          ]
+        contents:
         }]
       })
     });
 
-    const data = await response.json();
-
-    // 错误处理
-    if (data.error) {
-      return res.status(500).json({ error: `Google API 错误: ${data.error.message}` });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || `Google API 响应错误: ${response.status}`);
     }
 
-    // 提取 AI 生成的文本
-    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || "AI 暂时无法识别此内容，请尝试更清晰的角度。";
+    const data = await response.json();
+    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || "AI 无法识别内容";
     
     res.status(200).json({ result: resultText });
 
   } catch (error) {
-    console.error("Backend Error:", error);
-    res.status(500).json({ error: `服务器处理异常: ${error.message}` });
+    // 关键：将具体的错误原因传回前端
+    res.status(500).json({ error: `连接 Google 失败: ${error.message}` });
   }
 }
+
 
 
