@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -8,20 +7,19 @@
     <title>Fact or Fart - 照妖鏡</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body class="bg-slate-50 min-h-screen font-sans">
     <div class="max-w-md mx-auto p-6">
-        <header class="text-center mb-8">
+        <header class="text-center mb-8 pt-4">
             <h1 class="text-4xl font-black text-slate-800 mb-2">💨 Fact or Fart</h1>
-            <p class="text-blue-700 font-bold text-xl">真情假意 照妖鏡</p>
-            <div class="mt-4 p-4 bg-white rounded-2xl text-sm border-l-8 border-blue-500 shadow-md">
-                <p class="font-bold">宗旨：本站不設評論。以AI數據識別真假。</p>
+            <p class="text-blue-700 font-bold text-xl tracking-widest">真情假意 照妖鏡</p>
+            <div class="mt-4 p-4 bg-white rounded-2xl text-sm border-l-8 border-blue-500 shadow-sm text-left">
+                <p class="font-bold">宗旨：本站不設評論。透過數據識別真假。</p>
             </div>
         </header>
 
-        <div class="bg-white rounded-[2.5rem] p-8 text-center shadow-2xl">
-            <!-- 拍照區 -->
+        <div class="bg-white rounded-[2.5rem] p-8 text-center shadow-2xl border border-slate-100">
+            <!-- 拍照觸發區：改用 Label 確保全兼容 -->
             <div id="upload-zone">
-                <!-- 修正：iPhone 最推薦的標準觸發方式 -->
                 <label for="camera-input" class="cursor-pointer block w-full py-10">
                     <div class="text-7xl mb-4">📸</div>
                     <div class="text-2xl font-black text-blue-600">點擊拍照 / 防騙避坑</div>
@@ -29,32 +27,31 @@
                 </label>
             </div>
 
-            <!-- 預覽區 -->
-            <div id="preview-zone" class="hidden">
-                <img id="preview-img" class="max-h-80 mx-auto rounded-2xl shadow-md border-4 border-slate-50" onclick="document.getElementById('zoom-modal').classList.remove('hidden')">
-                <div class="mt-8 flex flex-col gap-4">
+            <!-- 預覽區：確保按鈕與圖片同時出現 -->
+            <div id="preview-zone" style="display:none;">
+                <img id="preview-img" class="max-h-80 mx-auto rounded-2xl shadow-md border-4 border-slate-50 mb-6" onclick="document.getElementById('zoom-modal').style.display='flex'">
+                <div class="flex flex-col gap-4">
                     <button id="start-btn" type="button" onclick="startAnalysis(event)" class="w-full py-5 bg-blue-600 text-white rounded-3xl text-2xl font-black shadow-lg">🚀 開始鑑定</button>
-                    <button type="button" onclick="window.location.reload()" class="text-slate-400 font-bold text-sm">❌ 不清楚？按此重拍</button>
+                    <button type="button" onclick="window.location.reload()" class="text-slate-400 font-bold text-sm">❌ 重拍 (Retake)</button>
                 </div>
             </div>
         </div>
 
-        <div id="result-zone" class="hidden mt-6 p-8 bg-white border-2 border-blue-100 rounded-[2.5rem] shadow-2xl">
+        <div id="result-zone" style="display:none;" class="mt-6 p-8 bg-white border-2 border-blue-100 rounded-[2.5rem] shadow-2xl">
             <h2 class="text-xl font-black mb-4 text-slate-800 border-b pb-4">⚖️ 專家鑑定報告</h2>
             <div id="analysis-text" class="whitespace-pre-wrap leading-relaxed text-slate-700 text-lg"></div>
         </div>
 
-        <!-- 修正：移除 capture 標籤，讓 iPhone 自行彈出選擇菜單（拍照或選圖），最穩妥 -->
+        <!-- 修正：移除 capture 標籤，這能徹底解決蘋果黑屏問題 -->
         <input type="file" id="camera-input" accept="image/*" class="hidden" onchange="handleFile(this)">
     </div>
 
-    <!-- 放大視窗 -->
-    <div id="zoom-modal" class="hidden fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4" onclick="this.classList.add('hidden')">
+    <div id="zoom-modal" style="display:none;" class="fixed inset-0 bg-black/95 z-50 items-center justify-center p-4" onclick="this.style.display='none'">
         <img id="zoom-img" class="max-w-full max-h-[85vh] object-contain">
     </div>
 
     <script>
-        let pureBase64 = "";
+        let pureBase64Data = "";
         const API_KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; 
 
         function handleFile(input) {
@@ -64,21 +61,21 @@
                     const img = new Image();
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        // 蘋果內存小，強制縮小到 800 像素防閃退
+                        // 強制縮小到 800 像素，防止手機內存爆掉閃退
                         const maxW = 800;
                         const scale = Math.min(maxW / img.width, 1);
                         canvas.width = img.width * scale;
                         canvas.height = img.height * scale;
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
                         
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                        pureBase64 = dataUrl.split(',')[1]; // 確保只取數據部分
+                        // 【終極修正】：只拿數據，不拿逗號
+                        pureBase64Data = dataUrl.split(',')[1]; 
                         
                         document.getElementById('preview-img').src = dataUrl;
                         document.getElementById('zoom-img').src = dataUrl;
-                        document.getElementById('upload-zone').classList.add('hidden');
-                        document.getElementById('preview-zone').classList.remove('hidden');
+                        document.getElementById('upload-zone').style.display = 'none';
+                        document.getElementById('preview-zone').style.display = 'block';
                     };
                     img.src = e.target.result;
                 };
@@ -91,12 +88,12 @@
             const btn = document.getElementById('start-btn');
             const resultZone = document.getElementById('result-zone');
             const analysisText = document.getElementById('analysis-text');
-            if(!pureBase64) return;
+            if(!pureBase64Data) return;
 
             btn.disabled = true;
             btn.innerText = "🔍 正在過濾...";
-            resultZone.classList.remove('hidden');
-            analysisText.innerText = "鑑定專家正在分析中...";
+            resultZone.style.display = 'block';
+            analysisText.innerText = "鑑定專家正在查看，請稍候...";
 
             try {
                 const url = `https://generativelanguage.googleapis.com{API_KEY}`;
@@ -113,7 +110,7 @@
                 if (data.candidates && data.candidates[0].content.parts[0].text) {
                     analysisText.innerText = data.candidates[0].content.parts[0].text;
                 } else {
-                    analysisText.innerText = "⚠️ 鑑定報告產出失敗。";
+                    analysisText.innerText = "⚠️ 鑑定失敗，請嘗試拍照更清楚一點。";
                 }
             } catch (err) {
                 analysisText.innerText = "⚠️ 連線出錯：" + err.message;
