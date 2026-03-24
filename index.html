@@ -3,50 +3,42 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fact or Fart - 照妖鏡</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans p-6 text-center">
-    <h1 class="text-4xl font-black mb-2">💨 Fact or Fart</h1>
-    <p class="text-blue-700 font-bold mb-8 tracking-widest">真情假意 照妖鏡</p>
+<body class="bg-gray-100 p-6 text-center">
+    <h1 class="text-3xl font-black mb-1">💨 Fact or Fart</h1>
+    <p class="text-blue-700 font-bold mb-6">真情假意 照妖鏡</p>
 
-    <div class="bg-white rounded-[2.5rem] p-8 shadow-2xl border border-slate-100 mb-6">
-        <div id="upload-zone">
-            <button type="button" onclick="document.getElementById('camera-input').click()" class="w-full py-10">
-                <div class="text-7xl mb-4">📸</div>
-                <div class="text-2xl font-black text-blue-600">點擊拍照 / 防騙避坑</div>
-                <p class="text-gray-400 mt-2 text-sm font-medium">消費者專用：一拍即鑑定</p>
+    <div class="bg-white rounded-3xl p-6 shadow-lg mb-6">
+        <div id="u-zone">
+            <button onclick="document.getElementById('file-in').click()" class="w-full py-8">
+                <div class="text-6xl mb-2">📸</div>
+                <div class="text-xl font-bold text-blue-600">點擊拍照 / 防騙避坑</div>
+                <p class="text-gray-400 text-xs mt-2">消費者專用：一拍即鑑定</p>
             </button>
         </div>
         
-        <div id="preview-area" style="display:none;">
-            <img id="p-img" class="max-h-64 mx-auto rounded-2xl shadow-md mb-6 border-4 border-slate-50" onclick="resetAll()">
-            <button id="go-btn" onclick="go(event)" class="w-full py-5 bg-blue-600 text-white rounded-3xl text-2xl font-black shadow-lg">🚀 開始鑑定</button>
-            <p class="text-gray-400 mt-4 text-xs">不清楚？點圖片重拍</p>
+        <div id="p-zone" style="display:none;">
+            <img id="p-img" class="max-h-48 mx-auto rounded-lg mb-4 shadow" onclick="location.reload()">
+            <button id="go-btn" onclick="go()" class="w-full py-4 bg-blue-600 text-white rounded-2xl text-xl font-black">🚀 開始鑑定</button>
         </div>
     </div>
 
-    <div id="report" style="display:none;" class="p-6 bg-white border-2 border-blue-100 rounded-[2.5rem] text-left shadow-2xl">
-        <h2 class="font-black border-b pb-4 mb-4 text-slate-800">⚖️ 專家鑑定報告</h2>
-        <div id="txt" class="text-lg leading-relaxed text-slate-700"></div>
+    <div id="report" style="display:none;" class="p-5 bg-white border-2 border-blue-100 rounded-2xl text-left shadow-md">
+        <h2 class="font-bold border-b pb-2 mb-3">⚖️ 專家鑑定報告</h2>
+        <div id="txt" class="text-base leading-relaxed text-gray-700"></div>
     </div>
 
-    <input type="file" id="camera-input" accept="image/*" class="hidden" onchange="load(this)">
+    <input type="file" id="file-in" accept="image/*" class="hidden" onchange="load(this)">
 
     <script>
-        const KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; 
-        
-        // 頁面一載入，先檢查有沒有「回魂」的照片
-        window.onload = () => {
-            const savedImg = localStorage.getItem('temp_img');
-            if (savedImg) {
-                showPreview(savedImg);
-            }
-        };
+        let rawB64 = "";
+        const KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; // <--- 填入密鑰
 
         function load(input) {
-            if (!input.files || !input.files[0]) return;
+            if (!input.files[0]) return;
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = new Image();
@@ -57,58 +49,41 @@
                     cvs.height = img.height * scale;
                     cvs.getContext('2d').drawImage(img, 0, 0, cvs.width, cvs.height);
                     const data = cvs.toDataURL('image/jpeg', 0.6);
-                    
-                    // 拍照後立刻存入記憶體，防止閃退丟失
-                    localStorage.setItem('temp_img', data);
-                    showPreview(data);
+                    rawB64 = data.split(',')[1]; // 精確獲取純數據
+                    document.getElementById('p-img').src = data;
+                    document.getElementById('u-zone').style.display = 'none';
+                    document.getElementById('p-zone').style.display = 'block';
                 };
                 img.src = e.target.result;
             };
             reader.readAsDataURL(input.files[0]);
         }
 
-        function showPreview(dataUrl) {
-            document.getElementById('p-img').src = dataUrl;
-            document.getElementById('upload-zone').style.display = 'none';
-            document.getElementById('preview-area').style.display = 'block';
-        }
-
-        function resetAll() {
-            localStorage.removeItem('temp_img');
-            location.reload();
-        }
-
-        async function go(ev) {
-            if(ev) ev.preventDefault();
+        async function go() {
             const btn = document.getElementById('go-btn');
             const txt = document.getElementById('txt');
-            const imgData = localStorage.getItem('temp_img');
-            
-            if(!imgData) return;
-
-            btn.disabled = true; btn.innerText = "🔍 正在過濾...";
+            btn.disabled = true; btn.innerText = "🔍 鑑定中...";
             document.getElementById('report').style.display = 'block';
             txt.innerText = "鑑定專家正在仔細查看，請稍候...";
 
+            const url = `https://generativelanguage.googleapis.com{KEY}`;
+            
             try {
-                const url = `https://generativelanguage.googleapis.com{KEY}`;
                 const res = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: } }
-                        ]}]
+                        contents:}]
                     })
                 });
                 const d = await res.json();
-                if (d.candidates && d.candidates[0].content.parts[0].text) {
+                if (d.candidates) {
                     txt.innerText = d.candidates[0].content.parts[0].text;
-                    localStorage.removeItem('temp_img'); // 成功後清除記憶
                 } else {
-                    txt.innerText = "⚠️ 鑑定報告生成失敗，請再試一次。";
+                    txt.innerText = "⚠️ 失敗：" + JSON.stringify(d);
                 }
-            } catch (e) { txt.innerText = "⚠️ 連線出錯：" + e.message; }
-            btn.disabled = false; btn.innerText = "🚀 重新鑑定";
+            } catch (e) { txt.innerText = "⚠️ 錯誤：" + e.message; }
+            btn.disabled = false; btn.innerText = "🚀 再次鑑定";
         }
     </script>
 </body>
