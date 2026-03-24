@@ -6,12 +6,12 @@
     <title>Fact or Fart - 照妖鏡</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans">
+<body class="bg-slate-50 min-h-screen">
     <div class="max-w-md mx-auto p-6">
-        <header class="text-center mb-8 pt-4">
+        <header class="text-center mb-8">
             <h1 class="text-4xl font-black text-slate-800 mb-2">💨 Fact or Fart</h1>
-            <p class="text-blue-700 font-bold text-xl tracking-widest">真情假意 照妖鏡</p>
-            <div class="mt-4 p-4 bg-white rounded-2xl text-sm border-l-8 border-blue-500 shadow-sm text-left">
+            <p class="text-blue-700 font-bold text-xl">真情假意 照妖鏡</p>
+            <div class="mt-4 p-4 bg-white rounded-2xl text-sm border-l-8 border-blue-500 shadow-md text-left">
                 <p class="font-bold">宗旨：本站不設評論。透過AI數據識別真假。</p>
             </div>
         </header>
@@ -27,7 +27,6 @@
 
             <div id="preview-zone" class="hidden">
                 <img id="preview-img" class="max-h-80 mx-auto rounded-2xl shadow-md border-4 border-slate-50" onclick="document.getElementById('zoom-modal').classList.remove('hidden')">
-                <p class="text-xs text-gray-400 mt-2">點擊圖片可放大檢查</p>
                 <div class="mt-8 flex flex-col gap-4">
                     <button id="start-btn" type="button" onclick="startAnalysis(event)" class="w-full py-5 bg-blue-600 text-white rounded-3xl text-2xl font-black shadow-lg">🚀 開始鑑定</button>
                     <button type="button" onclick="location.reload()" class="text-slate-400 font-bold text-sm">❌ 不清楚？按此重拍</button>
@@ -48,8 +47,8 @@
     </div>
 
     <script>
-        let pureBase64 = "";
-        const API_KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; 
+        let pureData = "";
+        const API_KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; // <-- 記得填鑰匙
 
         function handleFile(input) {
             const file = input.files[0];
@@ -64,15 +63,11 @@
                         canvas.height = img.height * scale;
                         canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                        
-                        // 【關鍵修正】：抓取逗號之後的純數據部分
-                        pureBase64 = dataUrl.split(',')[1];
-                        
+                        pureData = dataUrl.split(',')[1]; // 修正索引
                         document.getElementById('preview-img').src = dataUrl;
                         document.getElementById('zoom-img').src = dataUrl;
                         document.getElementById('upload-zone').classList.add('hidden');
                         document.getElementById('preview-zone').classList.remove('hidden');
-                        document.getElementById('result-zone').classList.add('hidden');
                     };
                     img.src = e.target.result;
                 };
@@ -81,16 +76,16 @@
         }
 
         async function startAnalysis(event) {
-            event.preventDefault(); // 【關鍵修正】：強行阻止瀏覽器刷新頁面
+            if(event) event.preventDefault();
             const btn = document.getElementById('start-btn');
             const resultZone = document.getElementById('result-zone');
             const analysisText = document.getElementById('analysis-text');
-            if(!pureBase64) return;
+            if(!pureData) return;
 
             btn.disabled = true;
             btn.innerText = "🔍 正在過濾...";
             resultZone.classList.remove('hidden');
-            analysisText.innerText = "正在分析真假成分...";
+            analysisText.innerText = "鑑定專家正在查看，請稍候...";
 
             const url = `https://generativelanguage.googleapis.com{API_KEY}`;
             
@@ -103,12 +98,9 @@
                         }]
                     })
                 });
-
                 const data = await response.json();
                 if (data.candidates && data.candidates[0].content.parts[0].text) {
                     analysisText.innerText = data.candidates[0].content.parts[0].text;
-                } else if (data.error) {
-                    analysisText.innerText = "⚠️ Google 報錯：" + data.error.message;
                 } else {
                     analysisText.innerText = "⚠️ 鑑定失敗，請嘗試拍得更清楚一些。";
                 }
@@ -122,6 +114,7 @@
     </script>
 </body>
 </html>
+
 
 
 
