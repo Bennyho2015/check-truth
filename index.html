@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -11,7 +12,7 @@
         <header class="text-center mb-8">
             <h1 class="text-4xl font-black text-slate-800 mb-2">💨 Fact or Fart</h1>
             <p class="text-blue-700 font-bold text-xl">真情假意 照妖鏡</p>
-            <div class="mt-4 p-4 bg-white rounded-2xl text-sm border-l-8 border-blue-500 shadow-md text-left">
+            <div class="mt-4 p-4 bg-white rounded-2xl text-sm border-l-8 border-blue-500 shadow-md">
                 <p class="font-bold">宗旨：本站不設評論。透過AI數據識別真假。</p>
             </div>
         </header>
@@ -47,61 +48,51 @@
     </div>
 
     <script>
-        let pureData = "";
-        const API_KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; // <-- 記得填鑰匙
+        let pureBase64 = ""; // 全域變數儲存純數據
+        const API_KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; 
 
-function handleFile(input) {
-    const file = input.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                // 強制將長邊縮到 800 像素，體積縮小 10 倍，保證不閃退
-                const maxLen = 800;
-                let width = img.width;
-                let height = img.height;
-                if (width > height) {
-                    if (width > maxLen) { height *= maxLen / width; width = maxLen; }
-                } else {
-                    if (height > maxLen) { width *= maxLen / height; height = maxLen; }
-                }
-                canvas.width = width;
-                canvas.height = height;
-                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-                
-                // 使用 0.6 的質量，肉眼看清，但體積極小
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                pureData = dataUrl.split(',')[1]; // 確保只拿純數據
-                
-                document.getElementById('preview-img').src = dataUrl;
-                document.getElementById('zoom-img').src = dataUrl;
-                document.getElementById('upload-zone').classList.add('hidden');
-                document.getElementById('preview-zone').classList.remove('hidden');
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    }
-}
+        function handleFile(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const scale = Math.min(1024 / img.width, 1024 / img.height, 1);
+                        canvas.width = img.width * scale;
+                        canvas.height = img.height * scale;
+                        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                        
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                        // 【核心修正】：只拿逗號後面的純數據字串
+                        pureBase64 = dataUrl.split(',')[1];
+                        
+                        document.getElementById('preview-img').src = dataUrl;
+                        document.getElementById('zoom-img').src = dataUrl;
+                        document.getElementById('upload-zone').classList.add('hidden');
+                        document.getElementById('preview-zone').classList.remove('hidden');
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
 
-
-        async function startAnalysis(event) {
-            if(event) event.preventDefault();
+        async function startAnalysis(ev) {
+            if(ev) ev.preventDefault(); // 阻止頁面跳轉
             const btn = document.getElementById('start-btn');
             const resultZone = document.getElementById('result-zone');
             const analysisText = document.getElementById('analysis-text');
-            if(!pureData) return;
+            if(!pureBase64) return;
 
             btn.disabled = true;
             btn.innerText = "🔍 正在過濾...";
             resultZone.classList.remove('hidden');
-            analysisText.innerText = "鑑定專家正在查看，請稍候...";
+            analysisText.innerText = "正在分析真假成分...";
 
-            const url = `https://generativelanguage.googleapis.com{API_KEY}`;
-            
             try {
+                const url = `https://generativelanguage.googleapis.com{API_KEY}`;
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -110,14 +101,15 @@ function handleFile(input) {
                         }]
                     })
                 });
+
                 const data = await response.json();
                 if (data.candidates && data.candidates[0].content.parts[0].text) {
                     analysisText.innerText = data.candidates[0].content.parts[0].text;
                 } else {
-                    analysisText.innerText = "⚠️ 鑑定失敗，請嘗試拍得更清楚一些。";
+                    analysisText.innerText = "⚠️ 鑑定失敗，請確保拍到清晰的標籤文字。";
                 }
             } catch (err) {
-                analysisText.innerText = "⚠️ 連線失敗：" + err.message;
+                analysisText.innerText = "⚠️ 連線出錯：" + err.message;
             } finally {
                 btn.disabled = false;
                 btn.innerText = "🚀 重新鑑定";
