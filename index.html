@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -6,12 +8,12 @@
     <title>Fact or Fart - 照妖鏡</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body class="bg-slate-50 min-h-screen font-sans">
     <div class="max-w-md mx-auto p-6">
         <header class="text-center mb-8">
             <h1 class="text-4xl font-black text-slate-800 mb-2">💨 Fact or Fart</h1>
-            <p class="text-blue-700 font-bold text-xl">真情假意 照妖鏡</p>
-            <div class="mt-4 p-4 bg-white rounded-2xl text-sm border-l-8 border-blue-500 shadow-md">
+            <p class="text-blue-700 font-bold text-xl tracking-widest">真情假意 照妖鏡</p>
+            <div class="mt-4 p-4 bg-white rounded-2xl text-sm border-l-8 border-blue-500 shadow-md text-left">
                 <p class="font-bold">宗旨：本站不設評論。以AI數據識別真假。</p>
             </div>
         </header>
@@ -37,7 +39,7 @@
 
         <div id="result-zone" class="hidden mt-6 p-8 bg-white border-2 border-blue-100 rounded-[2.5rem] shadow-2xl">
             <h2 class="text-xl font-black mb-4 text-slate-800 border-b pb-4">⚖️ 專家鑑定報告</h2>
-            <div id="analysis-text" class="whitespace-pre-wrap leading-relaxed text-slate-700 text-lg"></div>
+            <div id="analysis-text" class="whitespace-pre-wrap leading-relaxed text-slate-700 text-lg pt-4"></div>
         </div>
 
         <input type="file" id="camera-input" accept="image/*" capture="camera" class="hidden" onchange="handleFile(this)">
@@ -48,8 +50,8 @@
     </div>
 
     <script>
-        let pureBase64 = ""; 
-        const API_KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; 
+        let pureBase64 = "";
+        const API_KEY = "在此填入你的AIza密鑰"; 
 
         function handleFile(input) {
             const file = input.files[0];
@@ -65,7 +67,7 @@
                         canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
                         
-                        // 【核心修正】：只拿逗號之後的純數據字串
+                        // 【關鍵修正點】：必須取陣列的第 [1] 位，才是真正的純 Base64
                         pureBase64 = dataUrl.split(',')[1];
                         
                         document.getElementById('preview-img').src = dataUrl;
@@ -80,7 +82,7 @@
         }
 
         async function startAnalysis(ev) {
-            if(ev) ev.preventDefault(); 
+            if(ev) ev.preventDefault();
             const btn = document.getElementById('start-btn');
             const resultZone = document.getElementById('result-zone');
             const analysisText = document.getElementById('analysis-text');
@@ -106,10 +108,10 @@
                 if (data.candidates && data.candidates[0].content.parts[0].text) {
                     analysisText.innerText = data.candidates[0].content.parts[0].text;
                 } else {
-                    analysisText.innerText = "⚠️ 鑑定失敗，請確保拍到清晰的標籤文字。";
+                    analysisText.innerText = "⚠️ 鑑定報告生成失敗，請嘗試拍得更清楚一點。";
                 }
             } catch (err) {
-                analysisText.innerText = "⚠️ 連線出錯：" + err.message;
+                analysisText.innerText = "⚠️ 連線失敗：" + err.message;
             } finally {
                 btn.disabled = false;
                 btn.innerText = "🚀 重新鑑定";
@@ -118,7 +120,6 @@
     </script>
 </body>
 </html>
-
 
 
 
