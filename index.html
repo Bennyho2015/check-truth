@@ -18,7 +18,7 @@
 
         <div class="bg-white rounded-[2.5rem] p-8 text-center shadow-2xl border border-slate-100">
             <div id="upload-zone">
-                <button type="button" onclick="document.getElementById('camera-input').click()" class="w-full py-10">
+                <button type="button" onclick="document.getElementById('camera-input').click(); return false;" class="w-full py-10">
                     <div class="text-7xl mb-4">📸</div>
                     <div class="text-2xl font-black text-blue-600">點擊拍照 / 識別標籤</div>
                     <p class="text-gray-400 mt-3 font-medium">消費者專用：一拍即鑑定</p>
@@ -27,10 +27,9 @@
 
             <div id="preview-zone" class="hidden">
                 <img id="preview-img" class="max-h-80 mx-auto rounded-2xl shadow-md border-4 border-slate-50" onclick="document.getElementById('zoom-modal').classList.remove('hidden')">
-                <p class="text-xs text-gray-400 mt-2">點擊圖片可放大檢查</p>
                 <div class="mt-8 flex flex-col gap-4">
-                    <button id="start-btn" type="button" onclick="startAnalysis()" class="w-full py-5 bg-blue-600 text-white rounded-3xl text-2xl font-black shadow-lg">🚀 開始鑑定</button>
-                    <button type="button" onclick="location.reload()" class="text-slate-400 font-bold text-sm">❌ 不清楚？按此重拍</button>
+                    <button id="start-btn" type="button" onclick="startAnalysis(); return false;" class="w-full py-5 bg-blue-600 text-white rounded-3xl text-2xl font-black shadow-lg">🚀 開始鑑定</button>
+                    <button type="button" onclick="location.reload(); return false;" class="text-slate-400 font-bold text-sm">❌ 不清楚？按此重拍</button>
                 </div>
             </div>
         </div>
@@ -49,7 +48,6 @@
 
     <script>
         let pureBase64 = "";
-       
         const API_KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; 
 
         function handleFile(input) {
@@ -64,12 +62,10 @@
                         canvas.width = img.width * scale;
                         canvas.height = img.height * scale;
                         canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                        const compressed = canvas.toDataURL('image/jpeg', 0.7);
-                        // 修正：確實提取純數據部分
-                        pureBase64 = compressed.split(',')[1];
-                        
-                        document.getElementById('preview-img').src = compressed;
-                        document.getElementById('zoom-img').src = compressed;
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                        pureBase64 = dataUrl.split(',')[1];
+                        document.getElementById('preview-img').src = dataUrl;
+                        document.getElementById('zoom-img').src = dataUrl;
                         document.getElementById('upload-zone').classList.add('hidden');
                         document.getElementById('preview-zone').classList.remove('hidden');
                     };
@@ -79,49 +75,45 @@
             }
         }
 
- async function startAnalysis() {
-    const btn = document.getElementById('start-btn');
-    const resultZone = document.getElementById('result-zone');
-    const analysisText = document.getElementById('analysis-text');
-    
-    if(!pureBase64) return;
+        async function startAnalysis() {
+            const btn = document.getElementById('start-btn');
+            const resultZone = document.getElementById('result-zone');
+            const analysisText = document.getElementById('analysis-text');
+            if(!pureBase64) return;
 
-    btn.disabled = true;
-    btn.innerText = "🔍 正在過濾...";
-    resultZone.classList.remove('hidden');
-    analysisText.innerText = "正在分析真假成分...";
+            btn.disabled = true;
+            btn.innerText = "🔍 正在過濾...";
+            resultZone.classList.remove('hidden');
+            analysisText.innerText = "正在分析真假成分...";
 
-    const promptText = "你是極其嚴肅、權威的鑑定專家。請分析這張圖的真假成分：1.鑑定結果【🟢事實/🟡誤導/🔴屁話】2.鑑定總結 3.列出數據證據 4.購買建議。請用嚴格的繁體中文鑑定報告格式。";
+            try {
+                const url = `https://generativelanguage.googleapis.com{API_KEY}`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: 
+                        }]
+                    })
+                });
 
-    try {
-        // 注意：這裡必須使用反引號 ` 和完整的網址路徑
-        const url = `https://generativelanguage.googleapis.com{API_KEY}`;
-        
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents:
-                }]
-            })
-        });
-
-        const data = await response.json();
-        
-        if (data.candidates && data.candidates[0].content.parts[0].text) {
-            analysisText.innerText = data.candidates[0].content.parts[0].text;
-        } else if (data.error) {
-            analysisText.innerText = "⚠️ Google 報錯：" + data.error.message;
-        } else {
-            analysisText.innerText = "⚠️ 鑑定報告生成失敗，請嘗試拍得更清楚一點。";
+                const data = await response.json();
+                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    analysisText.innerText = data.candidates[0].content.parts[0].text;
+                } else {
+                    analysisText.innerText = "⚠️ 鑑定失敗，請確保拍到清晰的標籤文字。";
+                }
+            } catch (err) {
+                analysisText.innerText = "⚠️ 連線出錯：" + err.message;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "🚀 重新鑑定";
+            }
         }
-    } catch (err) {
-        analysisText.innerText = "⚠️ 連線失敗：" + err.message;
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "🚀 重新鑑定";
-    }
-}
+    </script>
+</body>
+</html>
+
 
 
 
