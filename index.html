@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -6,7 +7,7 @@
     <title>Fact or Fart - 照妖鏡</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body class="bg-slate-50 min-h-screen font-sans">
     <div class="max-w-md mx-auto p-6">
         <header class="text-center mb-8">
             <h1 class="text-4xl font-black text-slate-800 mb-2">💨 Fact or Fart</h1>
@@ -17,7 +18,6 @@
         </header>
 
         <div class="bg-white rounded-[2.5rem] p-8 text-center shadow-2xl border border-slate-100">
-            <!-- 拍照區 -->
             <div id="upload-zone">
                 <button type="button" onclick="document.getElementById('camera-input').click()" class="w-full py-10">
                     <div class="text-7xl mb-4">📸</div>
@@ -26,34 +26,30 @@
                 </button>
             </div>
 
-            <!-- 預覽區 -->
             <div id="preview-zone" class="hidden">
                 <img id="preview-img" class="max-h-80 mx-auto rounded-2xl shadow-md border-4 border-slate-50" onclick="document.getElementById('zoom-modal').classList.remove('hidden')">
                 <p class="text-xs text-gray-400 mt-2">點擊圖片可放大檢查</p>
                 <div class="mt-8 flex flex-col gap-4">
-                    <button id="start-btn" type="button" onclick="startAnalysis()" class="w-full py-5 bg-blue-600 text-white rounded-3xl text-2xl font-black shadow-lg active:scale-95 transition-transform">🚀 開始鑑定</button>
+                    <button id="start-btn" type="button" onclick="startAnalysis()" class="w-full py-5 bg-blue-600 text-white rounded-3xl text-2xl font-black shadow-lg">🚀 開始鑑定</button>
                     <button type="button" onclick="location.reload()" class="text-slate-400 font-bold text-sm">❌ 不清楚？按此重拍</button>
                 </div>
             </div>
         </div>
 
-        <!-- 鑑定報告結果 -->
         <div id="result-zone" class="hidden mt-6 p-8 bg-white border-2 border-blue-100 rounded-[2.5rem] shadow-2xl">
-            <h2 class="text-xl font-black mb-4 text-slate-800 border-b pb-4 flex items-center">⚖️ 專家鑑定報告</h2>
+            <h2 class="text-xl font-black mb-4 text-slate-800 border-b pb-4">⚖️ 專家鑑定報告</h2>
             <div id="analysis-text" class="whitespace-pre-wrap leading-relaxed text-slate-700 text-lg"></div>
         </div>
 
         <input type="file" id="camera-input" accept="image/*" capture="camera" class="hidden" onchange="handleFile(this)">
     </div>
 
-    <!-- 放大視窗 -->
     <div id="zoom-modal" class="hidden fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4" onclick="this.classList.add('hidden')">
         <img id="zoom-img" class="max-w-full max-h-[85vh] object-contain">
     </div>
 
     <script>
         let pureImageData = "";
-        // 【老驥請注意】：在這裡貼上你的 AIza... 密鑰
         const API_KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; 
 
         function handleFile(input) {
@@ -61,14 +57,25 @@
             if (file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const fullBase64 = e.target.result;
-                    // 關鍵修正：將 Base64 的標頭與純數據分開
-                    pureImageData = fullBase64.split(',')[1];
-                    
-                    document.getElementById('preview-img').src = fullBase64;
-                    document.getElementById('zoom-img').src = fullBase64;
-                    document.getElementById('upload-zone').classList.add('hidden');
-                    document.getElementById('preview-zone').classList.remove('hidden');
+                    const img = new Image();
+                    img.onload = () => {
+                        // 畫布壓縮：確保照片不會過大導致閃退
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const scale = Math.min(1024 / img.width, 1024 / img.height, 1);
+                        canvas.width = img.width * scale;
+                        canvas.height = img.height * scale;
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                        pureImageData = compressedBase64.split(',')[1];
+                        
+                        document.getElementById('preview-img').src = compressedBase64;
+                        document.getElementById('zoom-img').src = compressedBase64;
+                        document.getElementById('upload-zone').classList.add('hidden');
+                        document.getElementById('preview-zone').classList.remove('hidden');
+                    };
+                    img.src = e.target.result;
                 };
                 reader.readAsDataURL(file);
             }
@@ -78,7 +85,6 @@
             const btn = document.getElementById('start-btn');
             const resultZone = document.getElementById('result-zone');
             const analysisText = document.getElementById('analysis-text');
-            
             if(!pureImageData) return;
 
             btn.disabled = true;
@@ -90,24 +96,19 @@
 
             try {
                 const url = `https://generativelanguage.googleapis.com{API_KEY}`;
-                
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents:
-                        }]
+                        contents: }]
                     })
                 });
 
                 const data = await response.json();
-                
                 if (data.candidates && data.candidates[0].content.parts[0].text) {
                     analysisText.innerText = data.candidates[0].content.parts[0].text;
-                } else if (data.error) {
-                    analysisText.innerText = "⚠️ Google 報錯：" + data.error.message;
                 } else {
-                    analysisText.innerText = "⚠️ 鑑定報告生成失敗，請嘗試拍得更清楚一點。";
+                    analysisText.innerText = "⚠️ 鑑定報告生成失敗，可能 API Key 有誤或圖片不清楚。";
                 }
             } catch (err) {
                 analysisText.innerText = "⚠️ 連線失敗：" + err.message;
