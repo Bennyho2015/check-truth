@@ -3,64 +3,71 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Fact or Fart - 真情假意照妖鏡</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .loading { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen font-sans">
-    <div class="max-w-md mx-auto p-6">
-        <header class="text-center mb-10">
-            <h1 class="text-4xl font-black text-gray-900 mb-2">💨 Fact or Fart</h1>
-            <p class="text-blue-600 font-bold text-xl tracking-widest">真情假意 照妖鏡</p>
-            <div class="mt-4 p-4 bg-white rounded-xl text-sm border-l-8 border-blue-500 shadow-sm text-left">
+<body class="bg-slate-50 min-h-screen font-sans">
+    <div class="max-w-md mx-auto p-4 sm:p-6">
+        <header class="text-center mb-8 pt-4">
+            <h1 class="text-4xl font-black text-slate-800 mb-2">💨 Fact or Fart</h1>
+            <p class="text-blue-700 font-bold text-xl tracking-widest">真情假意 照妖鏡</p>
+            <div class="mt-4 p-4 bg-white rounded-2xl text-sm border-l-8 border-blue-500 shadow-sm text-left">
                 <p class="font-bold">宗旨：本站不設評論。透過數據識別真假。</p>
                 <p class="text-gray-500 mt-1 italic italic">認同與否，請自行判斷。</p>
             </div>
         </header>
 
-        <div id="main-card" class="bg-white rounded-3xl p-8 text-center shadow-xl border border-gray-100">
+        <main id="main-card" class="bg-white rounded-[2rem] p-8 text-center shadow-xl border border-slate-100">
+            <!-- 拍照區域 -->
             <div id="upload-zone">
-                <button onclick="document.getElementById('camera-input').click()" class="w-full py-12">
-                    <div class="text-6xl mb-4">📸</div>
-                    <div class="text-2xl font-bold text-blue-600">點擊拍照 / 識別標籤</div>
-                    <p class="text-gray-400 mt-2">消费者專用：一拍即鑑定</p>
+                <button type="button" onclick="document.getElementById('camera-input').click()" class="w-full py-10 active:scale-95 transition-transform">
+                    <div class="text-7xl mb-4">📸</div>
+                    <div class="text-2xl font-black text-blue-600">點擊拍照 / 識別標籤</div>
+                    <p class="text-gray-400 mt-3 font-medium">消費者專用：一拍即鑑定</p>
                 </button>
             </div>
 
-            <div id="preview-zone" class="hidden">
-                <img id="preview-img" class="max-h-80 mx-auto rounded-2xl shadow-md cursor-zoom-in border-4 border-gray-100" onclick="toggleZoom()">
-                <p class="text-xs text-gray-400 mt-2">點擊圖片可放大檢查</p>
-                <div class="mt-8 flex flex-col gap-3">
-                    <button id="start-btn" onclick="startAnalysis()" class="w-full py-4 bg-blue-600 text-white rounded-2xl text-xl font-black shadow-lg">🚀 開始鑑定</button>
-                    <button onclick="resetUpload()" class="text-gray-500 font-bold text-sm">❌ 不清楚？按此重拍</button>
+            <!-- 預覽區域 -->
+            <div id="preview-zone" class="hidden animate-fade-in">
+                <div class="relative inline-block">
+                    <img id="preview-img" class="max-h-80 mx-auto rounded-2xl shadow-md border-4 border-slate-50 cursor-zoom-in" onclick="toggleZoom(true)">
+                    <div class="absolute bottom-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs">點擊放大</div>
+                </div>
+                <div class="mt-8 flex flex-col gap-4">
+                    <button id="start-btn" type="button" onclick="startAnalysis()" class="w-full py-4 bg-blue-600 text-white rounded-2xl text-xl font-black shadow-lg shadow-blue-200 active:bg-blue-700">🚀 開始鑑定</button>
+                    <button type="button" onclick="resetUpload()" class="text-slate-400 font-bold text-sm py-2">❌ 不清楚？按此重拍</button>
                 </div>
             </div>
+        </main>
+
+        <!-- 鑑定報告結果 -->
+        <div id="result-zone" class="hidden mt-6 p-6 bg-white border-2 border-blue-50 rounded-[2rem] shadow-xl animate-fade-in">
+            <h2 class="text-xl font-black mb-4 text-slate-800 flex items-center border-b pb-4">⚖️ 專家鑑定報告</h2>
+            <div id="analysis-text" class="whitespace-pre-wrap leading-relaxed text-slate-700 text-lg"></div>
         </div>
 
-        <div id="result-zone" class="hidden mt-8 p-8 bg-white border-2 border-blue-100 rounded-3xl shadow-xl">
-            <h2 class="text-xl font-black mb-6 text-gray-900 flex items-center">⚖️ 專家鑑定報告</h2>
-            <div id="analysis-text" class="whitespace-pre-wrap leading-relaxed text-gray-700 text-lg border-t pt-4"></div>
-        </div>
-
+        <!-- 隱藏的輸入框 -->
         <input type="file" id="camera-input" accept="image/*" capture="camera" class="hidden" onchange="handleFile(this)">
     </div>
 
-    <div id="zoom-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-50 flex flex-col items-center justify-center p-4" onclick="toggleZoom()">
+    <!-- 放大模態視窗 -->
+    <div id="zoom-modal" class="hidden fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-4" onclick="toggleZoom(false)">
         <img id="zoom-img" class="max-w-full max-h-[85vh] object-contain">
-        <button class="mt-8 px-12 py-3 bg-white text-black font-black rounded-full">返回</button>
+        <button type="button" class="mt-8 px-12 py-3 bg-white text-black font-black rounded-full">返回</button>
     </div>
 
-    <footer class="mt-16 text-center text-gray-300 text-xs tracking-tighter pb-10">
-        © LK PROJECT | 求真務實 防騙避詐
+    <footer class="mt-16 text-center text-slate-300 text-xs tracking-tighter pb-10">
+        © LK PROJECT | 求真務實 防騙避坑
     </footer>
 
     <script>
         let base64Image = "";
-       
+        // 重要：請把下面引號內換成你的密鑰
         const API_KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; 
 
         function handleFile(input) {
@@ -73,65 +80,67 @@
                     document.getElementById('zoom-img').src = base64Image;
                     document.getElementById('upload-zone').classList.add('hidden');
                     document.getElementById('preview-zone').classList.remove('hidden');
+                    document.getElementById('result-zone').classList.add('hidden');
                 };
                 reader.readAsDataURL(file);
             }
         }
 
         function resetUpload() {
+            document.getElementById('camera-input').value = "";
             document.getElementById('upload-zone').classList.remove('hidden');
             document.getElementById('preview-zone').classList.add('hidden');
             document.getElementById('result-zone').classList.add('hidden');
         }
 
-        function toggleZoom() {
-            document.getElementById('zoom-modal').classList.toggle('hidden');
+        function toggleZoom(show) {
+            document.getElementById('zoom-modal').classList.toggle('hidden', !show);
         }
 
-async function startAnalysis() {
-    const btn = document.getElementById('start-btn');
-    const resultZone = document.getElementById('result-zone');
-    const analysisText = document.getElementById('analysis-text');
-    
-    btn.disabled = true;
-    btn.innerText = "🔍 正在捉妖（需時 5-10 秒）...";
-    resultZone.classList.remove('hidden');
-    analysisText.innerText = "鑑定專家正在趕來的路上，請稍候...";
+        async function startAnalysis() {
+            const btn = document.getElementById('start-btn');
+            const resultZone = document.getElementById('result-zone');
+            const analysisText = document.getElementById('analysis-text');
+            
+            if(!base64Image) return;
 
-    const promptText = "你是極其嚴肅、權威的食品安全鑑定專家。請分析這張圖的成份表：1.鑑定結果【🟢事實/🟡誤導/🔴屁話】2.一句總結 3.列出數據證據 4.購買建議。請用繁體中文鑑定書格式。";
-    
-    // 確保 rawData 抓到的是純數據
-    const rawData = base64Image.split(',')[1];
+            btn.disabled = true;
+            btn.innerText = "🔍 正在過濾 (需時 5-10 秒)...";
+            resultZone.classList.remove('hidden');
+            analysisText.innerText = "鑑定專家正在仔細查看成分表，請稍候...";
 
-    try {
-        // 這是最關鍵的一行，符號一個都不能少
-        const url = `https://generativelanguage.googleapis.com{API_KEY}`;
-        
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [
-                        { text: promptText },
-                        { inline_data: { mime_type: "image/jpeg", data: rawData } }
-                    ]
-                }]
-            })
-        });
+            const promptText = "你是極其嚴肅、權威的鑑定專家。請分析這張圖：1.鑑定結果【🟢事實/🟡誤導/🔴屁話】2.鑑定總結 3.列出數據證據 4.購買建議。請用繁體中文鑑定書格式。";
+            
+            // 處理圖片數據
+            const imageData = base64Image.split(',')[1];
 
-        const data = await response.json();
-        
-        if (data.candidates && data.candidates[0].content.parts[0].text) {
-            analysisText.innerText = data.candidates[0].content.parts[0].text;
-        } else {
-            analysisText.innerText = "⚠️ 鑑定報告出不來，可能是圖片太模糊或 API 額度限制。";
-            console.log(data);
+            try {
+                // 正確的網址與反引號語法
+                const url = `https://generativelanguage.googleapis.com{API_KEY}`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents:
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    analysisText.innerText = data.candidates[0].content.parts[0].text;
+                } else {
+                    analysisText.innerText = "⚠️ 鑑定報告出不來，可能是圖片文字太模糊。請重拍標籤細節。";
+                }
+            } catch (err) {
+                analysisText.innerText = "⚠️ 連線失敗，請檢查網絡。詳情：" + err.message;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "🚀 重新鑑定";
+            }
         }
-    } catch (err) {
-        analysisText.innerText = "⚠️ 連線失敗，請檢查網路。錯誤：" + err.message;
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "🚀 重新鑑定";
-    }
-}
+    </script>
+</body>
+</html>
