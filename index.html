@@ -54,125 +54,76 @@
         // ⚠️ 请在此处填入你的 API Key
         const API_KEY = "AIzaSyAQFJpYUlfTJdFaeznEfCd56bMUNsIMycM"; 
         
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const photoPreview = document.getElementById('photo-preview');
-        const resultArea = document.getElementById('result-area');
-        const loading = document.getElementById('loading');
-        
-        const captureBtn = document.getElementById('capture-btn');
-        const retakeBtn = document.getElementById('retake-btn');
-        const confirmBtn = document.getElementById('confirm-btn');
-        const chatBtn = document.getElementById('chat-btn');
+        <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const photoPreview = document.getElementById('photo-preview');
+    const resultArea = document.getElementById('result-area');
+    const loading = document.getElementById('loading');
+    const captureBtn = document.getElementById('capture-btn');
+    const retakeBtn = document.getElementById('retake-btn');
+    const confirmBtn = document.getElementById('confirm-btn');
 
-        let imageData = null;
+    let imageData = null;
 
-        // 启动高清摄像头
-        async function initCamera() {
-            try {
-                // 核心修复：加入高清分辨率参数
-                const constraints = {
-                    video: { 
-                        facingMode: "environment", // 优先后置摄像头
-                        width: { ideal: 1920 },    // 理想宽度 1920px
-                        height: { ideal: 1080 }    // 理想高度 1080px
-                    } 
-                };
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = stream;
-            } catch (err) {
-                console.error(err);
-                resultArea.innerHTML = `<div class="error-msg">摄像头启动失败，请确保使用 HTTPS 访问并允许摄像头权限。</div>`;
-            }
+    async function initCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment", width: 1280, height: 720 } 
+            });
+            video.srcObject = stream;
+        } catch (err) {
+            resultArea.innerHTML = "摄像头启动失败，请确保使用 HTTPS。";
         }
+    }
 
-        // 拍照
-        captureBtn.onclick = () => {
-            // 将 Canvas 设为视频实际大小，确保截图清晰
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0);
-            
-            // 导出高质量图片
-            imageData = canvas.toDataURL('image/jpeg', 0.9);
-            
-            video.style.display = 'none';
-            photoPreview.src = imageData;
-            photoPreview.style.display = 'block';
-            
-            captureBtn.style.display = 'none';
-            retakeBtn.style.display = 'inline-block';
-            confirmBtn.style.display = 'inline-block';
-        };
+    captureBtn.onclick = () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        imageData = canvas.toDataURL('image/jpeg', 0.8).split(',')[1]; // 只取 Base64 数据
+        video.style.display = 'none';
+        photoPreview.src = canvas.toDataURL('image/jpeg');
+        photoPreview.style.display = 'block';
+        captureBtn.style.display = 'none';
+        retakeBtn.style.display = 'inline-block';
+        confirmBtn.style.display = 'inline-block';
+    };
 
-        // 重拍
-        retakeBtn.onclick = () => {
-            video.style.display = 'block';
-            photoPreview.style.display = 'none';
-            retakeBtn.style.display = 'none';
-            confirmBtn.style.display = 'none';
-            captureBtn.style.display = 'inline-block';
-            resultArea.innerHTML = '';
-            chatBtn.style.display = 'none';
-        };
+    retakeBtn.onclick = () => {
+        video.style.display = 'block';
+        photoPreview.style.display = 'none';
+        retakeBtn.style.display = 'none';
+        confirmBtn.style.display = 'none';
+        captureBtn.style.display = 'inline-block';
+        resultArea.innerHTML = '';
+    };
 
-        // 提交分析
-        confirmBtn.onclick = async () => {
-            if (!API_KEY || API_KEY.includes("在这里粘贴")) {
-                resultArea.innerHTML = `<div class="error-msg">未检测到 API Key，请在代码第 85 行填入。</div>`;
-                return;
-            }
+    confirmBtn.onclick = async () => {
+        loading.style.display = 'block';
+        resultArea.innerHTML = '';
+        confirmBtn.disabled = true;
 
-            loading.style.display = 'block';
-            resultArea.innerHTML = '';
-            confirmBtn.disabled = true;
+        try {
+            // 重点：这里不再直接连 Google，而是连我们刚才建的 /api/analyze
+            const response = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: imageData })
+            });
 
-            const base64Data = imageData.split(',')[1]; // 只取 Base64 纯数据
-            
-            const prompt = `你是一个严谨的事实核查专家。请分析图片中文字的真伪，并识别虚假、夸张或煽情内容。
-            回复要求：
-            1. 使用 HTML 格式回复。
-            2. 严重错误/伪造用：<div class="fact-box fact-red"><strong>【警告】</strong>...原因</div>
-            3. 夸张/误导用：<div class="fact-box fact-yellow"><strong>【警惕】</strong>...原因</div>
-            4. 真实无误用：<div class="fact-box fact-green"><strong>【可信】</strong>...说明</div>
-            请直接输出这些 HTML 内容，保持简洁。`;
-
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com{API_KEY}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: prompt },
-                                { inline_data: { mime_type: "image/jpeg", data: base64Data } }
-                            ]
-                        }]
-                    })
-                });
-
-                const data = await response.json();
-                
-                if (data.error) throw new Error(data.error.message);
-
-                const resultText = data.candidates[0].content.parts[0].text;
-                resultArea.innerHTML = resultText;
-                chatBtn.style.display = 'block';
-            } catch (error) {
-                resultArea.innerHTML = `<div class="error-msg">分析遇到困难：${error.message}<br>请确认 API Key 是否有效或网络环境。</div>`;
-            } finally {
-                loading.style.display = 'none';
-                confirmBtn.disabled = false;
-            }
-        };
-
-        function goToChat() {
-            // 这里可以跳转到你自定义的对话页面，或直接打开 Google AI Studio
-            window.open('https://aistudio.google.com', '_blank');
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
+            resultArea.innerHTML = data.result;
+        } catch (error) {
+            resultArea.innerHTML = \`<div style="color:red">分析失败：\${error.message}</div>\`;
+        } finally {
+            loading.style.display = 'none';
+            confirmBtn.disabled = false;
         }
+    };
 
-        initCamera();
-    </script>
-</body>
-</html>
+    initCamera();
+</script>
+
+
