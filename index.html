@@ -9,35 +9,44 @@
 </head>
 <body class="bg-slate-50 min-h-screen font-sans p-6 text-center">
     <h1 class="text-4xl font-black mb-2">💨 Fact or Fart</h1>
-    <p class="text-blue-700 font-bold mb-8">真情假意 照妖鏡</p>
+    <p class="text-blue-700 font-bold mb-8 tracking-widest">真情假意 照妖鏡</p>
 
-    <div class="bg-white rounded-[2rem] p-8 shadow-xl border border-slate-100 mb-6">
-        <label for="camera-input" class="cursor-pointer block w-full py-10" id="upload-btn">
-            <div class="text-7xl mb-4">📸</div>
-            <div class="text-2xl font-black text-blue-600">點擊拍照 / 防騙避坑</div>
-            <p class="text-gray-400 mt-2 text-sm">消費者專用：一拍即鑑定</p>
-        </label>
+    <div class="bg-white rounded-[2.5rem] p-8 shadow-2xl border border-slate-100 mb-6">
+        <div id="upload-zone">
+            <button type="button" onclick="document.getElementById('camera-input').click()" class="w-full py-10">
+                <div class="text-7xl mb-4">📸</div>
+                <div class="text-2xl font-black text-blue-600">點擊拍照 / 防騙避坑</div>
+                <p class="text-gray-400 mt-2 text-sm font-medium">消費者專用：一拍即鑑定</p>
+            </button>
+        </div>
         
         <div id="preview-area" style="display:none;">
-            <img id="p-img" class="max-h-60 mx-auto rounded-xl shadow-md mb-6" onclick="window.location.reload()">
+            <img id="p-img" class="max-h-64 mx-auto rounded-2xl shadow-md mb-6 border-4 border-slate-50" onclick="resetAll()">
             <button id="go-btn" onclick="go(event)" class="w-full py-5 bg-blue-600 text-white rounded-3xl text-2xl font-black shadow-lg">🚀 開始鑑定</button>
-            <p class="text-gray-400 mt-4 text-xs">拍糊了？點圖片重拍</p>
+            <p class="text-gray-400 mt-4 text-xs">不清楚？點圖片重拍</p>
         </div>
     </div>
 
-    <div id="report" style="display:none;" class="p-6 bg-white border-2 border-blue-100 rounded-[2rem] text-left shadow-xl">
-        <h2 class="font-black border-b pb-2 mb-4 text-slate-800">⚖️ 專家鑑定報告</h2>
+    <div id="report" style="display:none;" class="p-6 bg-white border-2 border-blue-100 rounded-[2.5rem] text-left shadow-2xl">
+        <h2 class="font-black border-b pb-4 mb-4 text-slate-800">⚖️ 專家鑑定報告</h2>
         <div id="txt" class="text-lg leading-relaxed text-slate-700"></div>
     </div>
 
     <input type="file" id="camera-input" accept="image/*" class="hidden" onchange="load(this)">
 
     <script>
-        let finalImageString = ""; // 儲存最終的純數據字串
         const KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; 
+        
+        // 頁面一載入，先檢查有沒有「回魂」的照片
+        window.onload = () => {
+            const savedImg = localStorage.getItem('temp_img');
+            if (savedImg) {
+                showPreview(savedImg);
+            }
+        };
 
         function load(input) {
-            if (!input.files[0]) return;
+            if (!input.files || !input.files[0]) return;
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = new Image();
@@ -47,30 +56,39 @@
                     cvs.width = img.width * scale;
                     cvs.height = img.height * scale;
                     cvs.getContext('2d').drawImage(img, 0, 0, cvs.width, cvs.height);
-                    const dataUrl = cvs.toDataURL('image/jpeg', 0.6);
+                    const data = cvs.toDataURL('image/jpeg', 0.6);
                     
-                    // 【終極修正】：取索引 1，並確保它是一個純字串
-                    const parts = dataUrl.split(',');
-                    finalImageString = parts[1]; 
-                    
-                    document.getElementById('p-img').src = dataUrl;
-                    document.getElementById('upload-btn').style.display = 'none';
-                    document.getElementById('preview-area').style.display = 'block';
+                    // 拍照後立刻存入記憶體，防止閃退丟失
+                    localStorage.setItem('temp_img', data);
+                    showPreview(data);
                 };
                 img.src = e.target.result;
             };
             reader.readAsDataURL(input.files[0]);
         }
 
+        function showPreview(dataUrl) {
+            document.getElementById('p-img').src = dataUrl;
+            document.getElementById('upload-zone').style.display = 'none';
+            document.getElementById('preview-area').style.display = 'block';
+        }
+
+        function resetAll() {
+            localStorage.removeItem('temp_img');
+            location.reload();
+        }
+
         async function go(ev) {
-            if(ev) ev.preventDefault(); // 阻止瀏覽器默認行為
+            if(ev) ev.preventDefault();
             const btn = document.getElementById('go-btn');
             const txt = document.getElementById('txt');
-            if(!finalImageString) return;
+            const imgData = localStorage.getItem('temp_img');
+            
+            if(!imgData) return;
 
             btn.disabled = true; btn.innerText = "🔍 正在過濾...";
             document.getElementById('report').style.display = 'block';
-            txt.innerText = "專家正在查看成分，請稍候...";
+            txt.innerText = "鑑定專家正在仔細查看，請稍候...";
 
             try {
                 const url = `https://generativelanguage.googleapis.com{KEY}`;
@@ -78,23 +96,19 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents:}]
+                        contents: } }
+                        ]}]
                     })
                 });
                 const d = await res.json();
-                
                 if (d.candidates && d.candidates[0].content.parts[0].text) {
                     txt.innerText = d.candidates[0].content.parts[0].text;
-                } else if (d.error) {
-                    txt.innerText = "⚠️ Google 報錯：" + d.error.message;
+                    localStorage.removeItem('temp_img'); // 成功後清除記憶
                 } else {
-                    txt.innerText = "⚠️ 鑑定失敗，請確保拍到清晰文字。";
+                    txt.innerText = "⚠️ 鑑定報告生成失敗，請再試一次。";
                 }
-            } catch (e) { 
-                txt.innerText = "⚠️ 連線出錯：" + e.message; 
-            } finally {
-                btn.disabled = false; btn.innerText = "🚀 重新鑑定";
-            }
+            } catch (e) { txt.innerText = "⚠️ 連線出錯：" + e.message; }
+            btn.disabled = false; btn.innerText = "🚀 重新鑑定";
         }
     </script>
 </body>
