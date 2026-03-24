@@ -1,26 +1,19 @@
-// api/analyze.js (全面加固版)
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+  // 只允许 POST 请求
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   const { image } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY;
 
-  if (!API_KEY) return res.status(500).json({ error: "服务器未配置 API_KEY，请检查 Vercel 环境变量设置。" });
-  if (!image) return res.status(400).json({ error: "未接收到图片数据。" });
+  // 基础检查
+  if (!API_KEY) return res.status(500).json({ error: "服务器未配置 API_KEY" });
+  if (!image) return res.status(400).json({ error: "未接收到图片数据" });
 
   try {
-    // 核心修复：多重判定，确保提取出纯净的 Base64 字符串
-    let cleanBase64 = "";
-    if (Array.isArray(image)) {
-        // 如果是数组，取第二部分
-        cleanBase64 = image.length > 1 ? image[1] : image[0];
-    } else if (typeof image === 'string') {
-        // 如果是带前缀的字符串，切掉前缀
-        cleanBase64 = image.includes(',') ? image.split(',')[1] : image;
-    }
-
-    // 去掉可能的换行符或空格
-    cleanBase64 = cleanBase64.trim();
+    // 确保拿到的是纯 Base64 字符串（处理前端传来的数组或字符串）
+    const base64Data = Array.isArray(image) ? image[1] : image;
 
     const response = await fetch(`https://generativelanguage.googleapis.com{API_KEY}`, {
       method: 'POST',
@@ -28,30 +21,29 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         contents: [{
           parts: [
-            { text: "你是一个事实核查专家。请分析图片中文字的真伪，识别虚假、夸张或煽情内容。请直接用 HTML 的 div 标签返回结果，样式包含 fact-box 和对应的颜色类（fact-red, fact-yellow, fact-green）。" },
-            { inline_data: { mime_type: "image/jpeg", data: cleanBase64 } }
+            { text: "你是一个事实核查专家。请分析图片中文字的真伪。直接输出 HTML 格式回复，不要包含 Markdown 符号。严重错误用 <div class='fact-box fact-red'>，误导用 <div class='fact-box fact-yellow'>，真实用 <div class='fact-box fact-green'>。请简明扼要。" },
+            { inline_data: { mime_type: "image/jpeg", "data": base64Data } }
           ]
         }]
       })
     });
 
     const data = await response.json();
-    
-    // 捕获 Google API 内部的详细报错
+
+    // 错误处理
     if (data.error) {
-        console.error("Google API Error:", data.error.message);
-        return res.status(500).json({ error: `Google API 报错: ${data.error.message}` });
+      return res.status(500).json({ error: `Google API 错误: ${data.error.message}` });
     }
 
-    if (data.candidates && data.candidates[0].content.parts[0].text) {
-        res.status(200).json({ result: data.candidates[0].content.parts[0].text });
-    } else {
-        res.status(500).json({ error: "Gemini 未能生成结果，可能是图片内容无法识别，请重试。" });
-    }
+    // 提取 AI 生成的文本
+    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || "AI 暂时无法识别此内容，请尝试更清晰的角度。";
+    
+    res.status(200).json({ result: resultText });
 
   } catch (error) {
-    console.error("Backend Catch Error:", error);
-    res.status(500).json({ error: `服务器通讯故障: ${error.message}` });
+    console.error("Backend Error:", error);
+    res.status(500).json({ error: `服务器处理异常: ${error.message}` });
   }
 }
+
 
