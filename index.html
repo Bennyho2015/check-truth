@@ -1,6 +1,8 @@
 
 
 
+
+
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -23,20 +25,19 @@
         <div id="preview-area" style="display:none;">
             <img id="p-img" class="max-h-60 mx-auto rounded-xl shadow-md mb-6" onclick="window.location.reload()">
             <button id="go-btn" onclick="go()" class="w-full py-5 bg-blue-600 text-white rounded-3xl text-2xl font-black">🚀 開始鑑定</button>
-            <p class="text-gray-400 mt-4 text-xs">拍糊了？點圖片重拍</p>
         </div>
     </div>
 
-    <div id="report" style="display:none;" class="p-6 bg-white border-2 border-blue-100 rounded-[2rem] text-left shadow-xl">
-        <h2 class="font-black border-b pb-2 mb-4">⚖️ 專家鑑定報告</h2>
-        <div id="txt" class="text-lg leading-relaxed"></div>
+    <div id="report" style="display:none;" class="p-6 bg-white border-2 border-blue-100 rounded-[2rem] text-left shadow-xl animate-fade-in">
+        <h2 class="font-black border-b pb-2 mb-4 text-slate-800">⚖️ 專家鑑定報告</h2>
+        <div id="txt" class="text-lg leading-relaxed text-slate-700"></div>
     </div>
 
     <input type="file" id="camera-input" accept="image/*" class="hidden" onchange="load(this)">
 
     <script>
-        let b64 = "";
-        const KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; // <-- 填入密鑰
+        let b64Data = "";
+        const KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; // <--- 確保這裡填對了！
 
         function load(input) {
             if (!input.files[0]) return;
@@ -45,12 +46,15 @@
                 const img = new Image();
                 img.onload = () => {
                     const cvs = document.createElement('canvas');
-                    const scale = Math.min(800 / img.width, 1); // 強制壓縮到 800 像素，防安卓閃退
+                    const scale = Math.min(800 / img.width, 1); 
                     cvs.width = img.width * scale;
                     cvs.height = img.height * scale;
                     cvs.getContext('2d').drawImage(img, 0, 0, cvs.width, cvs.height);
-                    const data = cvs.toDataURL('image/jpeg', 0.5); // 壓縮質量
-                    b64 = data.split(',')[1]; // 獲取純數據
+                    const data = cvs.toDataURL('image/jpeg', 0.6);
+                    
+                    // 【核心修正】：一定要取 [1]，才是 Google 要的純數據！
+                    b64Data = data.split(',')[1]; 
+                    
                     document.getElementById('p-img').src = data;
                     document.getElementById('upload-btn').style.display = 'none';
                     document.getElementById('preview-area').style.display = 'block';
@@ -63,31 +67,39 @@
         async function go() {
             const btn = document.getElementById('go-btn');
             const txt = document.getElementById('txt');
-            btn.disabled = true; btn.innerText = "🔍 正在捉妖...";
-            document.getElementById('report').style.display = 'block';
-            txt.innerText = "鑑定中...";
+            if(!b64Data) return;
 
+            btn.disabled = true; 
+            btn.innerText = "🔍 正在過濾...";
+            document.getElementById('report').style.display = 'block';
+            txt.innerText = "鑑定專家正在仔細查看成分，請稍候...";
+
+            const url = `https://generativelanguage.googleapis.com{KEY}`;
+            
             try {
-                const url = `https://generativelanguage.googleapis.com{KEY}`;
                 const res = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{ parts: [
-                            { text: "分析圖中真假：1.鑑定【🟢事實/🟡誤導/🔴屁話】2.總結 3.數據證據 4.建議。用繁體中文報告。" },
-                            { inline_data: { mime_type: "image/jpeg", data: b64 } }
-                        ]}]
+                        contents:}]
                     })
                 });
                 const d = await res.json();
-                txt.innerText = d.candidates[0].content.parts[0].text;
-            } catch (e) { txt.innerText = "⚠️ 失敗：" + e.message; }
-            btn.disabled = false; btn.innerText = "🚀 重新鑑定";
+                
+                if (d.candidates && d.candidates[0].content.parts[0].text) {
+                    txt.innerText = d.candidates[0].content.parts[0].text;
+                } else if (d.error) {
+                    txt.innerText = "⚠️ Google 報錯：" + d.error.message;
+                } else {
+                    txt.innerText = "⚠️ 鑑定失敗，請嘗試拍照更清楚一點。";
+                }
+            } catch (e) { 
+                txt.innerText = "⚠️ 系統錯誤：" + e.message; 
+            } finally {
+                btn.disabled = false; 
+                btn.innerText = "🚀 重新鑑定";
+            }
         }
     </script>
 </body>
 </html>
-
-
-
-
