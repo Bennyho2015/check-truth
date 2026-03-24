@@ -16,12 +16,13 @@
             </div>
         </header>
 
-        <div class="bg-white rounded-[2rem] p-8 text-center shadow-xl border border-slate-100">
+        <div class="bg-white rounded-[2.5rem] p-8 text-center shadow-2xl border border-slate-100">
             <!-- 拍照區 -->
             <div id="upload-zone">
                 <button type="button" onclick="document.getElementById('camera-input').click()" class="w-full py-10">
                     <div class="text-7xl mb-4">📸</div>
                     <div class="text-2xl font-black text-blue-600">點擊拍照 / 識別標籤</div>
+                    <p class="text-gray-400 mt-3 font-medium">消費者專用：一拍即鑑定</p>
                 </button>
             </div>
 
@@ -30,15 +31,15 @@
                 <img id="preview-img" class="max-h-80 mx-auto rounded-2xl shadow-md border-4 border-slate-50" onclick="document.getElementById('zoom-modal').classList.remove('hidden')">
                 <p class="text-xs text-gray-400 mt-2">點擊圖片可放大檢查</p>
                 <div class="mt-8 flex flex-col gap-4">
-                    <button id="start-btn" type="button" onclick="startAnalysis()" class="w-full py-4 bg-blue-600 text-white rounded-2xl text-xl font-black shadow-lg">🚀 開始鑑定</button>
-                    <button type="button" onclick="location.reload()" class="text-slate-400 font-bold text-sm">❌ 重拍 (Retake)</button>
+                    <button id="start-btn" type="button" onclick="startAnalysis()" class="w-full py-5 bg-blue-600 text-white rounded-3xl text-2xl font-black shadow-lg active:scale-95 transition-transform">🚀 開始鑑定</button>
+                    <button type="button" onclick="location.reload()" class="text-slate-400 font-bold text-sm">❌ 不清楚？按此重拍</button>
                 </div>
             </div>
         </div>
 
         <!-- 鑑定報告結果 -->
-        <div id="result-zone" class="hidden mt-6 p-6 bg-white border-2 border-blue-100 rounded-[2rem] shadow-xl">
-            <h2 class="text-xl font-black mb-4 text-slate-800 border-b pb-4">⚖️ 專家鑑定報告</h2>
+        <div id="result-zone" class="hidden mt-6 p-8 bg-white border-2 border-blue-100 rounded-[2.5rem] shadow-2xl">
+            <h2 class="text-xl font-black mb-4 text-slate-800 border-b pb-4 flex items-center">⚖️ 專家鑑定報告</h2>
             <div id="analysis-text" class="whitespace-pre-wrap leading-relaxed text-slate-700 text-lg"></div>
         </div>
 
@@ -51,8 +52,8 @@
     </div>
 
     <script>
-        let base64Image = "";
-        
+        let pureImageData = "";
+        // 【老驥請注意】：在這裡貼上你的 AIza... 密鑰
         const API_KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; 
 
         function handleFile(input) {
@@ -60,9 +61,12 @@
             if (file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    base64Image = e.target.result;
-                    document.getElementById('preview-img').src = base64Image;
-                    document.getElementById('zoom-img').src = base64Image;
+                    const fullBase64 = e.target.result;
+                    // 關鍵修正：將 Base64 的標頭與純數據分開
+                    pureImageData = fullBase64.split(',')[1];
+                    
+                    document.getElementById('preview-img').src = fullBase64;
+                    document.getElementById('zoom-img').src = fullBase64;
                     document.getElementById('upload-zone').classList.add('hidden');
                     document.getElementById('preview-zone').classList.remove('hidden');
                 };
@@ -75,17 +79,14 @@
             const resultZone = document.getElementById('result-zone');
             const analysisText = document.getElementById('analysis-text');
             
-            if(!base64Image) return;
+            if(!pureImageData) return;
 
             btn.disabled = true;
             btn.innerText = "🔍 正在捉妖...";
             resultZone.classList.remove('hidden');
             analysisText.innerText = "鑑定專家正在趕來...";
 
-            const promptText = "你是極其嚴肅、權威的鑑定專家。請分析這張圖的真假成份：1.鑑定結果【🟢事實/🟡誤導/🔴屁話】2.鑑定總結 3.列出數據證據 4.購買建議。請用繁體中文。";
-            
-            // 關鍵：過濾掉 Base64 的頭部資訊
-            const imageData = base64Image.split(',')[1];
+            const promptText = "你是極其嚴肅、權威的鑑定專家。請分析這張圖的真假成份：1.鑑定結果【🟢事實/🟡誤導/🔴屁話】2.鑑定總結 3.列出數據證據 4.購買建議。請用嚴格的繁體中文鑑定報告格式。";
 
             try {
                 const url = `https://generativelanguage.googleapis.com{API_KEY}`;
@@ -106,10 +107,10 @@
                 } else if (data.error) {
                     analysisText.innerText = "⚠️ Google 報錯：" + data.error.message;
                 } else {
-                    analysisText.innerText = "⚠️ 鑑定報告出不來，請嘗試拍得更清楚一些。";
+                    analysisText.innerText = "⚠️ 鑑定報告生成失敗，請嘗試拍得更清楚一點。";
                 }
             } catch (err) {
-                analysisText.innerText = "⚠️ 連線出錯：" + err.message;
+                analysisText.innerText = "⚠️ 連線失敗：" + err.message;
             } finally {
                 btn.disabled = false;
                 btn.innerText = "🚀 重新鑑定";
@@ -118,3 +119,4 @@
     </script>
 </body>
 </html>
+
