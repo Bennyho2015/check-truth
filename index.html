@@ -3,33 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fact-or-Fart: 全平台兼容版</title>
+    <title>Fact-or-Fart 🔍</title>
     <style>
-        body { font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f8f9fa; }
-        h1 { color: #333; margin-bottom: 10px; }
-        /* 核心修复：确保视频容器有高度且不黑屏 */
-        #video-container { width: 100%; max-width: 500px; aspect-ratio: 4/3; background: #000; border-radius: 15px; overflow: hidden; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        body { font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f0f2f5; color: #333; margin: 0; }
+        h1 { margin-top: 20px; color: #1a73e8; }
+        /* 预览窗口：保持 4:3 比例 */
+        #container { width: 100%; max-width: 500px; aspect-ratio: 4/3; background: #000; border-radius: 16px; overflow: hidden; position: relative; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
         video, #photo-preview { width: 100%; height: 100%; object-fit: cover; }
-        .controls { margin-top: 20px; display: flex; gap: 15px; }
-        button { padding: 15px 30px; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
-        .btn-capture { background: #007bff; color: white; width: 100%; max-width: 200px; }
-        .btn-confirm { background: #28a745; color: white; }
-        .btn-retake { background: #6c757d; color: white; }
-        #result-area { margin-top: 20px; width: 100%; max-width: 500px; }
-        .loading { display: none; color: #007bff; margin-top: 10px; font-weight: bold; }
-        /* 结果框样式 */
-        .fact-box { padding: 15px; border-radius: 10px; margin-bottom: 10px; line-height: 1.6; }
-        .fact-red { background: #ffebee; border-left: 6px solid #f44336; color: #b71c1c; }
-        .fact-yellow { background: #fffde7; border-left: 6px solid #fbc02d; color: #827717; }
-        .fact-green { background: #e8f5e9; border-left: 6px solid #4caf50; color: #1b5e20; }
+        .controls { margin-top: 25px; display: flex; gap: 15px; width: 100%; max-width: 500px; }
+        button { flex: 1; padding: 16px; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; transition: 0.2s; cursor: pointer; }
+        .btn-capture { background: #1a73e8; color: white; }
+        .btn-confirm { background: #34a853; color: white; }
+        .btn-retake { background: #dadce0; color: #3c4043; }
+        button:active { transform: scale(0.95); opacity: 0.9; }
+        #result-area { margin-top: 25px; width: 100%; max-width: 500px; }
+        .loading { display: none; color: #1a73e8; font-weight: bold; margin-top: 15px; text-align: center; }
+        /* 结果样式卡片 */
+        .fact-box { padding: 16px; border-radius: 12px; margin-bottom: 12px; line-height: 1.6; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .fact-red { background: #fce8e6; border-left: 6px solid #d93025; color: #a50e0e; }
+        .fact-yellow { background: #fef7e0; border-left: 6px solid #f9ab00; color: #a16207; }
+        .fact-green { background: #e6f4ea; border-left: 6px solid #1e8e3e; color: #0d652d; }
     </style>
 </head>
 <body>
 
     <h1>Fact-or-Fart 🔍</h1>
-    
-    <div id="video-container">
-        <!-- 核心修复：添加 playsinline 和 muted 确保 iOS 自动播放 -->
+    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">拍摄文字，AI 帮您核查真伪</p>
+
+    <div id="container">
+        <!-- playsinline, muted, autoplay 是 iOS 兼容性的关键 -->
         <video id="video" autoplay playsinline muted></video>
         <img id="photo-preview" style="display:none;">
     </div>
@@ -39,7 +41,7 @@
     <div class="controls">
         <button id="capture-btn" class="btn-capture">📸 拍照</button>
         <button id="retake-btn" class="btn-retake" style="display:none;">🔄 重拍</button>
-        <button id="confirm-btn" class="btn-confirm" style="display:none;">🚀 确定并分析</button>
+        <button id="confirm-btn" class="btn-confirm" style="display:none;">🚀 确定分析</button>
     </div>
 
     <div id="loading" class="loading">⏳ 正在通过云端请求 Gemini...</div>
@@ -51,95 +53,49 @@
         const photoPreview = document.getElementById('photo-preview');
         const resultArea = document.getElementById('result-area');
         const loading = document.getElementById('loading');
-        
         const captureBtn = document.getElementById('capture-btn');
         const retakeBtn = document.getElementById('retake-btn');
         const confirmBtn = document.getElementById('confirm-btn');
 
-        let imageData = null;
+        let pureBase64 = null;
 
-        // 兼容性启动摄像头
+        // 启动摄像头
         async function initCamera() {
-            const constraints = {
-                video: { 
-                    facingMode: "environment",
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
-            };
-
             try {
+                const constraints = {
+                    video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
+                };
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = stream;
-                // 核心修复：处理 iOS 异步播放
-                await video.play();
+                // 确保 iOS 自动播放
+                video.onloadedmetadata = () => video.play();
             } catch (err) {
-                console.error("Camera Error:", err);
-                resultArea.innerHTML = `<div style="color:red">无法启动相机。请确保：<br>1. 使用 HTTPS 访问<br>2. 已授权相机权限</div>`;
+                resultArea.innerHTML = `<div style="color:red; text-align:center;">无法启动相机，请确保：<br>1. 使用 HTTPS 访问<br>2. 已授予相机权限</div>`;
             }
         }
 
-        // 拍照逻辑
-// api/analyze.js (全面加固版)
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+        // 拍照
+        captureBtn.onclick = () => {
+            const scale = 0.7; // 缩放以减小体积
+            canvas.width = video.videoWidth * scale;
+            canvas.height = video.videoHeight * scale;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // 导出高质量且适度压缩的 JPEG
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+            // 核心点：只提取逗号后面的纯 Base64 数据，减轻后端负担
+            pureBase64 = dataUrl.split(',')[1];
+            
+            video.style.display = 'none';
+            photoPreview.src = dataUrl;
+            photoPreview.style.display = 'block';
+            
+            captureBtn.style.display = 'none';
+            retakeBtn.style.display = 'inline-block';
+            confirmBtn.style.display = 'inline-block';
+        };
 
-  const { image } = req.body;
-  const API_KEY = process.env.GEMINI_API_KEY;
-
-  if (!API_KEY) return res.status(500).json({ error: "服务器未配置 API_KEY，请检查 Vercel 环境变量设置。" });
-  if (!image) return res.status(400).json({ error: "未接收到图片数据。" });
-
-  try {
-    // 核心修复：多重判定，确保提取出纯净的 Base64 字符串
-    let cleanBase64 = "";
-    if (Array.isArray(image)) {
-        // 如果是数组，取第二部分
-        cleanBase64 = image.length > 1 ? image[1] : image[0];
-    } else if (typeof image === 'string') {
-        // 如果是带前缀的字符串，切掉前缀
-        cleanBase64 = image.includes(',') ? image.split(',')[1] : image;
-    }
-
-    // 去掉可能的换行符或空格
-    cleanBase64 = cleanBase64.trim();
-
-    const response = await fetch(`https://generativelanguage.googleapis.com{API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: "你是一个事实核查专家。请分析图片中文字的真伪，识别虚假、夸张或煽情内容。请直接用 HTML 的 div 标签返回结果，样式包含 fact-box 和对应的颜色类（fact-red, fact-yellow, fact-green）。" },
-            { inline_data: { mime_type: "image/jpeg", data: cleanBase64 } }
-          ]
-        }]
-      })
-    });
-
-    const data = await response.json();
-    
-    // 捕获 Google API 内部的详细报错
-    if (data.error) {
-        console.error("Google API Error:", data.error.message);
-        return res.status(500).json({ error: `Google API 报错: ${data.error.message}` });
-    }
-
-    if (data.candidates && data.candidates[0].content.parts[0].text) {
-        res.status(200).json({ result: data.candidates[0].content.parts[0].text });
-    } else {
-        res.status(500).json({ error: "Gemini 未能生成结果，可能是图片内容无法识别，请重试。" });
-    }
-
-  } catch (error) {
-    console.error("Backend Catch Error:", error);
-    res.status(500).json({ error: `服务器通讯故障: ${error.message}` });
-  }
-}
-
-
-
-        // 重拍逻辑
+        // 重拍
         retakeBtn.onclick = () => {
             video.style.display = 'block';
             photoPreview.style.display = 'none';
@@ -149,7 +105,7 @@ export default async function handler(req, res) {
             resultArea.innerHTML = '';
         };
 
-        // 分析逻辑（方案 B：调用 Vercel 后端）
+        // 发送给后端的 /api/analyze
         confirmBtn.onclick = async () => {
             loading.style.display = 'block';
             resultArea.innerHTML = '';
@@ -159,7 +115,7 @@ export default async function handler(req, res) {
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: imageData })
+                    body: JSON.stringify({ image: pureBase64 }) // 传给后端纯字符串
                 });
 
                 const data = await response.json();
@@ -167,18 +123,18 @@ export default async function handler(req, res) {
                 
                 resultArea.innerHTML = data.result;
             } catch (error) {
-                resultArea.innerHTML = `<div style="color:red">分析失败：${error.message}</div>`;
+                resultArea.innerHTML = `<div style="color:red; padding:10px;">分析失败：${error.message}</div>`;
             } finally {
                 loading.style.display = 'none';
                 confirmBtn.disabled = false;
             }
         };
 
-        // 页面加载即初始化
         initCamera();
     </script>
 </body>
 </html>
+
 
 
 
