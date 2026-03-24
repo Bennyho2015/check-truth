@@ -7,67 +7,109 @@
     <title>Fact or Fart - 照妖鏡</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 p-6 text-center font-sans">
+<body class="bg-gray-50 p-6 text-center font-sans">
     <h1 class="text-3xl font-black mb-1">💨 Fact or Fart</h1>
-    <p class="text-blue-700 font-bold mb-6">真情假意 照妖鏡</p>
+    <p class="text-blue-700 font-bold mb-8">真情假意 照妖鏡</p>
 
-    <div class="bg-white rounded-3xl p-8 shadow-lg mb-6">
+    <div class="bg-white rounded-3xl p-8 shadow-lg mb-6 border border-gray-100">
         <div id="u-zone">
-            <button onclick="document.getElementById('f-in').click()" class="w-full">
-                <div class="text-6xl mb-2">📸</div>
+            <!-- 修正：使用更穩定的 label 觸發 -->
+            <label for="f-in" class="cursor-pointer block w-full py-10">
+                <div class="text-6xl mb-4">📸</div>
                 <div class="text-xl font-bold text-blue-600">點擊拍照 / 防騙避坑</div>
-                <p class="text-gray-400 text-xs mt-2">消費者專用：一拍即鑑定</p>
-            </button>
+                <p class="text-gray-400 text-xs mt-2 font-medium">消費者專用：一拍即鑑定</p>
+            </label>
         </div>
         
         <div id="p-zone" style="display:none;">
-            <p id="status" class="text-blue-600 font-bold animate-pulse">🔍 鑑定專家正在分析中...</p>
+            <img id="p-img" class="max-h-48 mx-auto rounded-xl mb-6 shadow-md border-2 border-white">
+            <button id="go-btn" onclick="go()" class="w-full py-4 bg-blue-600 text-white rounded-2xl text-xl font-black shadow-lg">🚀 開始鑑定</button>
+            <p class="text-gray-400 mt-4 text-xs" onclick="reset()">❌ 拍糊了？按此重拍</p>
         </div>
     </div>
 
-    <div id="report" style="display:none;" class="p-5 bg-white border-2 border-blue-100 rounded-2xl text-left shadow-md">
-        <h2 class="font-bold border-b pb-2 mb-3 text-slate-800">⚖️ 專家鑑定報告</h2>
-        <div id="txt" class="text-base leading-relaxed text-gray-700"></div>
-        <button onclick="location.reload()" class="mt-6 w-full py-2 bg-gray-200 rounded-xl text-sm font-bold text-gray-500">❌ 關閉報告</button>
+    <div id="report" style="display:none;" class="p-6 bg-white border-2 border-blue-100 rounded-3xl text-left shadow-xl">
+        <h2 class="font-black border-b pb-3 mb-4 text-slate-800 text-xl">⚖️ 專家鑑定報告</h2>
+        <div id="txt" class="text-lg leading-relaxed text-gray-700"></div>
     </div>
 
-    <input type="file" id="f-in" accept="image/*" class="hidden" onchange="run(this)">
+    <input type="file" id="f-in" accept="image/*" class="hidden" onchange="process(this)">
 
     <script>
         const KEY = "AIzaSyBdRtLdrRxaksEjJbrVXYv9gsGKAPL28rA"; 
 
-        async function run(input) {
-            if (!input.files[0]) return;
-            
-            const file = input.files[0];
-            const reader = new FileReader();
-            
-            // 介面轉換
+        // 【回魂機制】：頁面啟動時檢查有沒有遺留的照片數據
+        window.onload = () => {
+            const saved = localStorage.getItem('last_fart');
+            if (saved) {
+                showPreview(saved);
+            }
+        };
+
+        function reset() {
+            localStorage.removeItem('last_fart');
+            location.reload();
+        }
+
+        function showPreview(data) {
+            document.getElementById('p-img').src = data;
             document.getElementById('u-zone').style.display = 'none';
             document.getElementById('p-zone').style.display = 'block';
+        }
 
-            reader.onload = async (e) => {
-                const b64 = e.target.result.split(',')[1];
-                const url = `https://generativelanguage.googleapis.com{KEY}`;
-                
-                try {
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents:}]
-                        })
-                    });
-                    const d = await res.json();
-                    document.getElementById('p-zone').style.display = 'none';
-                    document.getElementById('report').style.display = 'block';
-                    document.getElementById('txt').innerText = d.candidates[0].content.parts[0].text;
-                } catch (err) {
-                    alert("鑑定失敗：" + err.message);
-                    location.reload();
-                }
+        async function process(input) {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const cvs = document.createElement('canvas');
+                    // 極限壓縮到 600 像素，體積極小，絕對不閃退
+                    const scale = Math.min(600 / img.width, 1);
+                    cvs.width = img.width * scale;
+                    cvs.height = img.height * scale;
+                    cvs.getContext('2d').drawImage(img, 0, 0, cvs.width, cvs.height);
+                    const lowResData = cvs.toDataURL('image/jpeg', 0.5);
+                    
+                    // 核心：第一時間存入本地，防止瀏覽器重啟後消失
+                    localStorage.setItem('last_fart', lowResData);
+                    showPreview(lowResData);
+                };
+                img.src = e.target.result;
             };
             reader.readAsDataURL(file);
+        }
+
+        async function go() {
+            const btn = document.getElementById('go-btn');
+            const txt = document.getElementById('txt');
+            const data = localStorage.getItem('last_fart');
+            if (!data) return;
+
+            btn.disabled = true; btn.innerText = "🔍 鑑定中...";
+            document.getElementById('report').style.display = 'block';
+            txt.innerText = "正在分析，請稍候...";
+
+            const b64 = data.split(',')[1]; // 只拿純數據
+            const url = `https://generativelanguage.googleapis.com{KEY}`;
+            
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents:}]
+                    })
+                });
+                const d = await res.json();
+                txt.innerText = d.candidates[0].content.parts[0].text;
+                localStorage.removeItem('last_fart'); // 成功後清除
+            } catch (err) {
+                txt.innerText = "⚠️ 鑑定出錯：" + err.message;
+            } finally {
+                btn.disabled = false; btn.innerText = "🚀 再次鑑定";
+            }
         }
     </script>
 </body>
