@@ -87,22 +87,35 @@
         }
 
         // 拍照動作
-        shotBtn.onclick = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-            pureBase64 = dataUrl.split(','); // 關鍵修復：分離數據頭
-            
-            video.style.display = 'none';
-            preview.src = dataUrl;
-            preview.style.display = 'block';
-            shotBtn.style.display = 'none';
-            magicBtn.style.display = 'block';
-            retryBtn.style.display = 'block';
-        };
+   shotBtn.onclick = () => {
+    const canvas = document.createElement('canvas');
+    
+    // 核心修復：不管手機相機多高清，我們強制縮小到 1280 寬度來進行 AI 分析
+    // 這對 AI 識字完全足夠，但體積會縮小 10 倍
+    const maxWidth = 1280;
+    const scale = video.videoWidth > maxWidth ? maxWidth / video.videoWidth : 1;
+    
+    canvas.width = video.videoWidth * scale;
+    canvas.height = video.videoHeight * scale;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // 關鍵修復：將質量(Quality)設為 0.5。JPEG 0.5 的體積非常適合雲端傳輸
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+    
+    // 確保只提取逗號後的數據
+    const parts = dataUrl.split(',');
+    pureBase64 = parts.length > 1 ? parts[1] : parts[0];
+    
+    video.style.display = 'none';
+    preview.src = dataUrl;
+    preview.style.display = 'block';
+    shotBtn.style.display = 'none';
+    magicBtn.style.display = 'block';
+    retryBtn.style.display = 'block';
+};
+
 
         // 重拍動作
         retryBtn.onclick = () => {
