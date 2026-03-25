@@ -1,5 +1,6 @@
 // api/analyze.js
 export default async function handler(req, res) {
+  // 1. 強制設置返回格式為 JSON
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
   const { image } = req.body;
@@ -11,7 +12,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 獲取純淨 Base64
+    // 2. 獲取純淨 Base64
     const cleanBase64 = Array.isArray(image) ? (image.length > 1 ? image : image) : image;
 
     const response = await fetch(`https://generativelanguage.googleapis.com{API_KEY}`, {
@@ -25,22 +26,24 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    // 捕捉 Google 的具體錯誤
+    // 3. 捕捉 Google 的具體錯誤
     if (data.error) {
         return res.status(200).json({ result: `<div style='color:red; background:white; padding:10px;'>【Google 報錯】: ${data.error.message}</div>` });
     }
 
     if (data.candidates && data.candidates[0].content.parts[0].text) {
         let resultHtml = data.candidates[0].content.parts[0].text;
-        resultHtml = resultHtml.replace(/```html|```/g, ''); // 去掉 Markdown 標籤
+        // 去掉 AI 可能會自動加上的 ```html 標籤
+        resultHtml = resultHtml.replace(/```html|```/g, '');
         res.status(200).json({ result: resultHtml });
     } else {
-        res.status(200).json({ result: "AI 暫時無法生成分析報告。" });
+        res.status(200).json({ result: "AI 暫時無法生成分析報告，請嘗試拍得更清晰一些。" });
     }
   } catch (error) {
     res.status(200).json({ result: `<div style='color:red; background:white; padding:10px;'>【後端異常】: ${error.message}</div>` });
   }
 }
+
 
 
 
