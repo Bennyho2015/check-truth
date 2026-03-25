@@ -6,7 +6,7 @@
     <style>
         body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #121212; color: #fff; margin: 0; }
         h1 { margin-top: 20px; font-size: 32px; color: #ffeb3b; }
-        #box { width: 90vw; max-width: 500px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; border: 4px solid #444; position: relative; }
+        #box { width: 95vw; max-width: 500px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; border: 4px solid #444; position: relative; }
         video, #p { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
         button { margin-top: 20px; padding: 18px; border-radius: 12px; border: none; font-weight: bold; font-size: 20px; cursor: pointer; width: 100%; max-width: 400px; }
         #result { margin-top: 20px; width: 100%; max-width: 800px; color: #333; overflow-x: auto; }
@@ -31,16 +31,16 @@
 
         sBtn.onclick = () => {
             const canvas = document.createElement('canvas');
-            // 核心修復：強制將圖片寬度縮小到 800px，這是傳輸最穩定的尺寸
-            const maxWidth = 800;
+            const maxWidth = 1024; // 稍微放寬一點點確保清晰度
             const scale = v.videoWidth > maxWidth ? maxWidth / v.videoWidth : 1;
             canvas.width = v.videoWidth * scale;
             canvas.height = v.videoHeight * scale;
             canvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
             
-            // 壓縮質量 0.5，圖片體積將只有幾十 KB
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
-            pureBase64 = dataUrl.split(',')[1]; // 確保只拿純數據部分
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+            const dataParts = dataUrl.split(',');
+            // 核心修復：精確獲取第二部分的 Base64 字串
+            pureBase64 = dataParts.length > 1 ? dataParts[1] : dataParts[0];
             
             v.style.display = 'none'; p.src = dataUrl; p.style.display = 'block';
             sBtn.style.display = 'none'; aBtn.style.display = 'block';
@@ -50,7 +50,8 @@
             document.getElementById('loading').style.display = 'block';
             document.getElementById('result').innerHTML = '';
             try {
-                const res = await fetch('/api/analyze', {
+                // 核心修復：使用相對路徑確保穩定
+                const res = await fetch('./api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ image: pureBase64 })
@@ -58,7 +59,7 @@
                 const data = await res.json();
                 document.getElementById('result').innerHTML = data.result || data.error;
             } catch (e) {
-                document.getElementById('result').innerHTML = "<div style='color:white; background:red; padding:10px;'>傳輸失敗，請重試</div>";
+                document.getElementById('result').innerHTML = "<div style='color:white; background:red; padding:10px;'>連線異常，請重試</div>";
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }
@@ -66,6 +67,7 @@
     </script>
 </body>
 </html>
+
 
 
 
