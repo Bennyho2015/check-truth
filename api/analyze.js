@@ -5,17 +5,10 @@ export default async function handler(req, res) {
   const API_KEY = process.env.GEMINI_API_KEY;
 
   // 這裡的指令決定了表格的格式
-  const prompt = `你是文稿核查專家「照妖鏡」。請分析圖片中的文字內容真偽。
-    要求：
-    1. 輸出一個 HTML 表格 (<table>)，包含三欄：
-       - 第一欄：【原文片段】
-       - 第二欄：【AI 簡要評議】
-       - 第三欄：【詳細理據】
-    2. 顏色標註：
-       - 嚴重偽造內容背景設為 #ffebee (淡紅)
-       - 誇張誤導內容背景設為 #fef7e0 (淡黃)
-       - 真實內容背景設為 #e6f4ea (淡綠)
-    3. 只輸出 <table> 標籤內容，不要 Markdown 符號，不要解釋，直接輸出表格。`;
+const prompt = "你是嚴謹的內容真偽核查專家。請分析圖像和文字，識別虛假、誇張或煽情內容。
+  請直接輸出一個 HTML 表格 (<table>) 包含三欄：1.【原文片段】、2.【簡要評議】、3.【核查理據】。
+  要求：嚴重錯誤背景設為紅 (#ffebee)，誤導設為黃 (#fffde7)，正確準確設為綠 (#e8f5e9)。
+    直接輸出表格內容，不要 Markdown 符號。";
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com{API_KEY}`, {
