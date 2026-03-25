@@ -1,125 +1,48 @@
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>照妖鏡 - 內容真偽核查</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>照妖鏡</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #121212; color: #fff; margin: 0; }
-        h1 { margin-top: 20px; font-size: 32px; color: #ffeb3b; }
-        #container { width: 95vw; max-width: 600px; aspect-ratio: 16/9; border: 4px solid #444; border-radius: 12px; overflow: hidden; position: relative; background: #000; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #121212; color: #fff; }
+        #box { width: 95vw; max-width: 500px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; }
         video, #preview { width: 100%; height: 100%; object-fit: cover; }
-        .controls { margin-top: 25px; width: 95%; max-width: 500px; display: flex; flex-direction: column; gap: 15px; }
-        button { padding: 18px; border: none; border-radius: 50px; font-weight: bold; font-size: 22px; cursor: pointer; }
-        .btn-shot { background: #1a73e8; color: white; }
-        .btn-go { background: #34a853; color: white; display: none; border: 2px solid #ffeb3b; }
-        .btn-retry { background: #333; color: #bbb; font-size: 14px; display: none; margin-top: 10px; }
-        .msg { margin-top: 15px; text-align: center; font-weight: bold; font-size: 16px; }
-        #error-log { color: #ff4d4d; font-size: 12px; margin-top: 10px; }
+        button { margin-top: 20px; padding: 15px 30px; border-radius: 50px; border: none; font-weight: bold; font-size: 20px; cursor: pointer; width: 100%; max-width: 400px; }
+        #result { margin-top: 20px; width: 100%; max-width: 600px; color: #333; }
+        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; }
+        td { border: 1px solid #ddd; padding: 10px; font-size: 14px; }
     </style>
 </head>
 <body>
-
     <h1>照妖鏡 🔍</h1>
-    
-    <div id="container">
-        <!-- 確保啟動 playsinline 屬性 -->
-        <video id="video" autoplay playsinline muted></video>
-        <img id="preview" style="display:none;">
-    </div>
-
-    <div id="error-log"></div>
-
-    <div class="controls">
-        <button id="shot-btn" class="btn-shot">📸 拍攝高清圖像</button>
-        <button id="go-btn" class="btn-go">🚀 查察驗真假</button>
-        <button id="retry-btn" class="btn-retry">🔄 不清楚？重拍</button>
-    </div>
-
-    <div id="hint" class="msg" style="display:none; color: #ffeb3b;">
-        ✨ 圖片及指令已準備好！<br>跳轉後長按輸入框「貼上」即可
-    </div>
-
+    <div id="box"><video id="v" autoplay playsinline muted></video><img id="p" style="display:none;"></div>
+    <button id="s" style="background:#1a73e8; color:white;">📸 拍照</button>
+    <button id="a" style="background:#34a853; color:white; display:none;">🚀 查察驗真假</button>
+    <div id="loading" style="display:none; color:#ffeb3b; margin-top:15px;">⏳ 正在分析...</div>
+    <div id="result"></div>
     <script>
-        const video = document.getElementById('video');
-        const preview = document.getElementById('preview');
-        const shotBtn = document.getElementById('shot-btn');
-        const goBtn = document.getElementById('go-btn');
-        const retryBtn = document.getElementById('retry-btn');
-        const hint = document.getElementById('hint');
-        const errorLog = document.getElementById('error-log');
-
-        // 啟動相機：先用最基本的參數，確保能「看得到」
-        async function startCamera() {
-            const constraints = { 
-                video: { facingMode: "environment" } 
-            };
+        let img = null;
+        navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}}).then(s=>{document.getElementById('v').srcObject=s;});
+        document.getElementById('s').onclick=()=>{
+            const c=document.createElement('canvas'); const v=document.getElementById('v');
+            c.width=v.videoWidth; c.height=v.videoHeight; c.getContext('2d').drawImage(v,0,0);
+            img=c.toDataURL('image/jpeg',0.5).split(',')[1];
+            document.getElementById('v').style.display='none'; document.getElementById('p').src=c.toDataURL(); 
+            document.getElementById('p').style.display='block'; document.getElementById('s').style.display='none';
+            document.getElementById('a').style.display='block';
+        };
+        document.getElementById('a').onclick=async()=>{
+            document.getElementById('loading').style.display='block';
             try {
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = stream;
-                // 某些手機需要顯式調用 play
-                video.play();
-            } catch (err) {
-                errorLog.innerHTML = "相機啟動失敗：" + err.message + "<br>請檢查是否允許了瀏覽器相機權限。";
-            }
-        }
-
-        shotBtn.onclick = async () => {
-            // 檢查視頻是否已經準備好
-            if (video.readyState !== 4) {
-                alert("相機尚未就緒，請稍候。");
-                return;
-            }
-
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0);
-            
-            try {
-                const dataUrl = canvas.toDataURL('image/png');
-                preview.src = dataUrl;
-                
-                video.style.display = 'none';
-                preview.style.display = 'block';
-                shotBtn.style.display = 'none';
-                goBtn.style.display = 'block';
-                retryBtn.style.display = 'block';
-                hint.style.display = 'block';
-
-                // 準備圖片和指令
-                const blob = await (await fetch(dataUrl)).blob();
-                const command = "請幫我查察這張圖中的內容真偽。請直接用【三欄表格】回覆我：1.【原文片段】（標註紅/黃/綠色）、2.【簡要評議】、3.【詳細理據】。看完後我們繼續對話。";
-                
-                const item = new ClipboardItem({ 
-                    "image/png": blob,
-                    "text/plain": new Blob([command], { type: "text/plain" })
-                });
-                await navigator.clipboard.write([item]);
-            } catch (e) {
-                console.error("Capture error:", e);
-            }
+                const res = await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:img})});
+                const data = await res.json(); document.getElementById('result').innerHTML = data.result || data.error;
+            } catch(e) { document.getElementById('result').innerHTML = "連線失敗"; }
+            document.getElementById('loading').style.display='none';
         };
-
-        retryBtn.onclick = () => {
-            video.style.display = 'block';
-            preview.style.display = 'none';
-            shotBtn.style.display = 'block';
-            goBtn.style.display = 'none';
-            retryBtn.style.display = 'none';
-            hint.style.display = 'none';
-        };
-
-        goBtn.onclick = () => {
-            window.open("https://gemini.google.com", "_blank");
-        };
-
-        // 頁面加載時啟動
-        startCamera();
     </script>
 </body>
 </html>
+
 
 
 
