@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   const API_KEY = process.env.GEMINI_API_KEY;
 
   // 這裡的指令決定了表格的格式
-  const prompt = `你是一個文稿核查專家「照妖鏡」。請分析圖片中的文字內容真偽。
+  const prompt = `你是文稿核查專家「照妖鏡」。請分析圖片中的文字內容真偽。
     要求：
     1. 輸出一個 HTML 表格 (<table>)，包含三欄：
        - 第一欄：【原文片段】
