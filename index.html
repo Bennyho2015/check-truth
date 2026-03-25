@@ -5,155 +5,110 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>照妖鏡 - 內容真偽核查</title>
     <style>
-        body { font-family: -apple-system, "PingFang HK", sans-serif; display: flex; flex-direction: column; align-items: center; padding: 15px; background: #121212; color: #fff; margin: 0; }
-        h1 { margin-top: 20px; font-size: 32px; color: #ffeb3b; text-shadow: 0 0 10px rgba(255,235,59,0.5); }
-        p { color: #aaa; font-size: 14px; margin-bottom: 10px; }
+        body { font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #121212; color: #fff; margin: 0; height: 100vh; }
+        h1 { margin-top: 30px; font-size: 36px; color: #ffeb3b; text-shadow: 0 0 10px rgba(255,235,59,0.5); }
         
-        /* 16:9 專業橫向高清畫框 */
-        #container { 
-            width: 95vw; 
-            max-width: 600px; 
-            aspect-ratio: 16 / 9; 
-            border: 4px solid #444; 
-            border-radius: 12px; 
-            overflow: hidden; 
-            position: relative; 
-            background: #000; 
-            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
-        }
+        /* 16:9 專業橫向高清框 */
+        #box { width: 95vw; max-width: 600px; aspect-ratio: 16/9; border: 4px solid #444; border-radius: 12px; overflow: hidden; position: relative; background: #000; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
         video, #preview { width: 100%; height: 100%; object-fit: cover; }
         
-        .controls { margin-top: 20px; width: 95%; max-width: 500px; display: flex; flex-direction: column; gap: 12px; }
-        button { padding: 16px; border: none; border-radius: 50px; font-weight: bold; font-size: 20px; cursor: pointer; transition: 0.3s; }
+        .controls { margin-top: 30px; width: 95%; max-width: 500px; display: flex; flex-direction: column; gap: 15px; }
+        button { padding: 18px; border: none; border-radius: 50px; font-weight: bold; font-size: 22px; cursor: pointer; transition: 0.3s; }
         
         .btn-shot { background: #1a73e8; color: white; }
-        .btn-magic { background: #34a853; color: white; display: none; border: 2px solid #ffeb3b; }
-        .btn-retry { background: #333; color: #bbb; font-size: 14px; display: none; }
+        .btn-go { background: #34a853; color: white; display: none; border: 3px solid #ffeb3b; animation: pulse 2s infinite; }
+        .btn-retry { background: #333; color: #bbb; font-size: 16px; display: none; }
         
-        #loading { display: none; color: #ffeb3b; margin: 15px 0; font-weight: bold; text-align: center; font-size: 18px; }
+        #hint { margin-top: 20px; color: #ffeb3b; font-weight: bold; text-align: center; font-size: 18px; display: none; line-height: 1.6; }
         
-        /* 表格結果顯示區 */
-        #result-area { width: 100%; max-width: 900px; margin-top: 20px; color: #333; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 14px; line-height: 1.6; }
-        th { background: #f2f2f2; font-weight: bold; }
-        .error-box { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; width: 100%; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
-    <h1>照妖鏡 🔍</h1>
-    <p>對準文字，確認清晰後拍攝</p>
 
-    <div id="container">
+    <h1>照妖鏡 🔍</h1>
+    <p style="color:#aaa; margin-bottom:15px;">拍下圖像和文字， AI 幚你查察真偽</p>
+
+    <div id="box">
         <video id="video" autoplay playsinline muted></video>
         <img id="preview" style="display:none;">
     </div>
 
     <div class="controls">
         <button id="shot-btn" class="btn-shot">📸 拍攝高清圖像</button>
-        <button id="magic-btn" class="btn-magic">🚀 查察驗真假</button>
+        <button id="go-btn" class="btn-go">🚀 查察驗真假</button>
         <button id="retry-btn" class="btn-retry">🔄 不清楚？重拍</button>
     </div>
 
-    <div id="loading">⏳ 正在查察分析，請稍候...</div>
-    <div id="result-area"></div>
+    <div id="hint">
+        ✨ 圖片及指令已自動複製！<br>
+        跳轉後在對話框「貼上」即可。
+    </div>
 
     <script>
         const video = document.getElementById('video');
         const preview = document.getElementById('preview');
         const shotBtn = document.getElementById('shot-btn');
-        const magicBtn = document.getElementById('magic-btn');
+        const goBtn = document.getElementById('go-btn');
         const retryBtn = document.getElementById('retry-btn');
-        const resultArea = document.getElementById('result-area');
-        const loading = document.getElementById('loading');
+        const hint = document.getElementById('hint');
 
-        let pureBase64 = null;
-
-        // 啟動高清相機
-        async function initCamera() {
-            try {
-                const constraints = { 
-                    video: { 
-                        facingMode: "environment",
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    } 
-                };
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = stream;
-            } catch (err) {
-                resultArea.innerHTML = '<div class="error-box">無法啟動高清相機，請檢查權限</div>';
-            }
-        }
+        // 啟動相機
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 1920 } })
+            .then(stream => { video.srcObject = stream; });
 
         // 拍照動作
-   // 請找到 index.html 裡的 shotBtn.onclick 並替換：
-shotBtn.onclick = () => {
-    const canvas = document.createElement('canvas');
-    const maxWidth = 1024; // 強制縮小寬度，AI 看得清，伺服器跑得動
-    const scale = video.videoWidth > maxWidth ? maxWidth / video.videoWidth : 1;
-    
-    canvas.width = video.videoWidth * scale;
-    canvas.height = video.videoHeight * scale;
-    
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // 質量設為 0.5 (50%)，體積縮小 10 倍
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
-    
-    // 精確分離 Base64 數據
-    const parts = dataUrl.split(',');
-    pureBase64 = parts.length > 1 ? parts[1] : parts[0];
-    
-    video.style.display = 'none';
-    preview.src = dataUrl;
-    preview.style.display = 'block';
-    shotBtn.style.display = 'none';
-    magicBtn.style.display = 'block';
-    retryBtn.style.display = 'block';
-};
+        shotBtn.onclick = async () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            const dataUrl = canvas.toDataURL('image/png');
+            preview.src = dataUrl;
+            video.style.display = 'none';
+            preview.style.display = 'block';
+            
+            shotBtn.style.display = 'none';
+            goBtn.style.display = 'block';
+            retryBtn.style.display = 'block';
+            hint.style.display = 'block';
 
+            // 自動準備：圖片 + 你的三欄表格指令
+            const blob = await (await fetch(dataUrl)).blob();
+            const command = "請幫我查察這張圖中的內容真偽。請直接用【三欄表格】回覆我：\n1.【原文片段】（嚴重錯誤配紅背景、誤導配黃背景、正確配綠背景）\n2.【簡要評議】\n3.【詳細理據】。完畢後我們可以繼續談話。";
+            
+            try {
+                // 將文字指令和圖片一起寫入剪貼簿 (部分手機支援)
+                const item = new ClipboardItem({ 
+                    "image/png": blob,
+                    "text/plain": new Blob([command], { type: "text/plain" })
+                });
+                await navigator.clipboard.write([item]);
+            } catch (e) {
+                console.log("Clipboard API failed");
+            }
+        };
 
-
-
-        // 重拍動作
+        // 重拍
         retryBtn.onclick = () => {
             video.style.display = 'block';
             preview.style.display = 'none';
             shotBtn.style.display = 'block';
-            magicBtn.style.display = 'none';
+            goBtn.style.display = 'none';
             retryBtn.style.display = 'none';
-            resultArea.innerHTML = '';
+            hint.style.display = 'none';
         };
 
-        // 執行查察
-        magicBtn.onclick = async () => {
-            loading.style.display = 'block';
-            resultArea.innerHTML = '';
-            magicBtn.disabled = true;
-
-            try {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: pureBase64 })
-                });
-                const data = await response.json();
-                if (data.error) throw new Error(data.error);
-                resultArea.innerHTML = data.result;
-            } catch (err) {
-                resultArea.innerHTML = `<div class="error-box">查察失敗：${err.message}</div>`;
-            } finally {
-                loading.style.display = 'none';
-                magicBtn.disabled = false;
-            }
+        // 帶路人跳轉
+        goBtn.onclick = () => {
+            // 跳轉至 Gemini 官方 App 介面
+            window.open("https://gemini.google.com", "_blank");
         };
-
-        initCamera();
     </script>
 </body>
 </html>
+
 
 
 
