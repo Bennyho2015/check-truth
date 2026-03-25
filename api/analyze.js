@@ -1,37 +1,19 @@
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
-
   const { image } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY;
-
-  if (!API_KEY) return res.status(500).json({ error: "伺服器未配置 API_KEY" });
-  if (!image) return res.status(400).json({ error: "未接收到影像數據" });
-
   try {
-    // 這裡直接接收前端傳來的純 Base64 字串
     const response = await fetch(`https://generativelanguage.googleapis.com{API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents:
-        }]
+        contents: [{ parts: [{ text: "請分析圖中文字真偽。直接輸出一個三欄表格：原文、簡評、理據。嚴重錯誤背景設為紅(#ffebee)，誤導黃(#fef7e0)，正確綠(#e6f4ea)。" }, { inline_data: { mime_type: "image/jpeg", data: image } }] }]
       })
     });
-
     const data = await response.json();
-    if (data.error) throw new Error(data.error.message);
-
-    if (data.candidates && data.candidates[0].content.parts[0].text) {
-        let resultHtml = data.candidates[0].content.parts[0].text;
-        resultHtml = resultHtml.replace(/```html|```/g, ''); // 清理多餘標籤
-        res.status(200).json({ result: resultHtml });
-    } else {
-        res.status(500).json({ error: "AI 暫時無法分析此內容，請試著拍清楚一點" });
-    }
-  } catch (error) {
-    res.status(500).json({ error: `後端異常：${error.message}` });
-  }
+    res.status(200).json({ result: data.candidates[0].content.parts[0].text.replace(/```html|```/g, '') });
+  } catch (error) { res.status(500).json({ error: "分析出錯，請檢查 API Key" }); }
 }
+
 
 
 
