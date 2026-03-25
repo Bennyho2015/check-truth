@@ -5,73 +5,67 @@
     <title>照妖鏡</title>
     <style>
         body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #121212; color: #fff; margin: 0; }
-        h1 { margin-top: 20px; font-size: 32px; color: #ffeb3b; text-shadow: 0 0 10px rgba(255,235,59,0.5); }
-        #box { width: 95vw; max-width: 600px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; border: 4px solid #444; position: relative; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+        h1 { margin-top: 20px; font-size: 32px; color: #ffeb3b; }
+        #box { width: 95vw; max-width: 500px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; border: 4px solid #444; position: relative; }
         video, #p { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
-        .controls { margin-top: 20px; width: 95%; max-width: 500px; display: flex; flex-direction: column; gap: 12px; }
-        button { padding: 18px; border: none; border-radius: 50px; font-weight: bold; font-size: 20px; cursor: pointer; transition: 0.3s; }
-        .btn-shot { background: #1a73e8; color: white; }
-        .btn-magic { background: #34a853; color: white; display: none; border: 2px solid #ffeb3b; }
-        .btn-retry { background: #333; color: #bbb; font-size: 14px; display: none; }
-        #loading { display: none; color: #ffeb3b; margin: 15px 0; font-weight: bold; text-align: center; }
-        #result { width: 100%; max-width: 900px; margin-top: 20px; color: #333; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 14px; line-height: 1.5; }
-        th { background: #f2f2f2; font-weight: bold; }
+        button { margin-top: 20px; padding: 18px; border-radius: 12px; border: none; font-weight: bold; font-size: 20px; cursor: pointer; width: 100%; max-width: 400px; }
+        #result { margin-top: 20px; width: 100%; max-width: 800px; color: #333; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; }
+        td { border: 1px solid #ddd; padding: 12px; font-size: 14px; line-height: 1.5; }
     </style>
 </head>
 <body>
     <h1>照妖鏡 🔍</h1>
     <div id="box"><video id="v" autoplay playsinline muted></video><img id="p" style="display:none;"></div>
-    <div class="controls">
-        <button id="s" class="btn-shot">📸 拍攝高清圖像</button>
-        <button id="a" class="btn-magic">🚀 查察驗真假</button>
-        <button id="r" class="btn-retry">🔄 不清楚？重拍</button>
-    </div>
-    <div id="loading">⏳ 正在查察分析，請稍候...</div>
+    <button id="s" style="background:#1a73e8; color:white;">📸 拍攝圖像</button>
+    <button id="a" style="background:#34a853; color:white; display:none;">🚀 查察驗真假</button>
+    <div id="loading" style="display:none; color:#ffeb3b; margin:15px 0; font-weight:bold;">⏳ 正在查察，請稍候...</div>
     <div id="result"></div>
 
     <script>
-        const v = document.getElementById('v'), p = document.getElementById('p'), sBtn = document.getElementById('s'), aBtn = document.getElementById('a'), rBtn = document.getElementById('r'), resDiv = document.getElementById('result'), loading = document.getElementById('loading');
         let pureBase64 = null;
+        const v = document.getElementById('v'), p = document.getElementById('p'), sBtn = document.getElementById('s'), aBtn = document.getElementById('a'), resDiv = document.getElementById('result'), loading = document.getElementById('loading');
 
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 1280 } }).then(stream => { v.srcObject = stream; });
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(stream => { v.srcObject = stream; });
 
         sBtn.onclick = () => {
             const canvas = document.createElement('canvas');
-            const maxWidth = 1024;
-            const scale = v.videoWidth > maxWidth ? maxWidth / v.videoWidth : 1;
+            const scale = 0.6; // 進一步壓縮
             canvas.width = v.videoWidth * scale; canvas.height = v.videoHeight * scale;
             canvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.5); // 強力壓縮，保證連線不中斷
-            pureBase64 = dataUrl.split(',')[1]; // 只拿 Base64 純數據
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+            pureBase64 = dataUrl.split(','); 
             v.style.display = 'none'; p.src = dataUrl; p.style.display = 'block';
-            sBtn.style.display = 'none'; aBtn.style.display = 'block'; rBtn.style.display = 'block';
-        };
-
-        rBtn.onclick = () => {
-            v.style.display = 'block'; p.style.display = 'none';
-            sBtn.style.display = 'block'; aBtn.style.display = 'none'; rBtn.style.display = 'none';
-            resDiv.innerHTML = '';
+            sBtn.style.display = 'none'; aBtn.style.display = 'block';
         };
 
         aBtn.onclick = async () => {
-            loading.style.display = 'block'; resDiv.innerHTML = ''; aBtn.disabled = true;
+            loading.style.display = 'block'; resDiv.innerHTML = '';
             try {
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ image: pureBase64 })
                 });
+
+                // 核心改進：如果伺服器報錯（500/404等），獲取它的文字內容
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    resDiv.innerHTML = `<div style="background:white; color:red; padding:10px;">伺服器出錯 (狀態碼 ${response.status})：${errorText.substring(0, 100)}...</div>`;
+                    return;
+                }
+
                 const data = await response.json();
-                resDiv.innerHTML = data.result || `<div style="color:red; background:white; padding:10px;">${data.error}</div>`;
+                resDiv.innerHTML = data.result || `<div style="color:red; background:white;">${data.error}</div>`;
             } catch (e) {
-                resDiv.innerHTML = `<div style="color:red; background:white; padding:10px;">查察失敗，請檢查 API Key 或連線</div>`;
-            } finally { loading.style.display = 'none'; aBtn.disabled = false; }
+                // 這裡現在只會攔截「真正的網絡斷開」
+                resDiv.innerHTML = `<div style="background:white; color:red; padding:10px;">連線異常：${e.message}</div>`;
+            } finally { loading.style.display = 'none'; }
         };
     </script>
 </body>
 </html>
+
 
 
 
