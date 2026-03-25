@@ -1,39 +1,45 @@
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
-  
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+
   const { image } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY;
 
-  // 這裡的指令決定了表格的格式
-const prompt = "你是嚴謹的內容真偽核查專家。請分析圖像和文字，識別虛假、誇張或煽情內容。
-  請直接輸出一個 HTML 表格 (<table>) 包含三欄：1.【原文片段】、2.【簡要評議】、3.【核查理據】。
-  要求：嚴重錯誤背景設為紅 (#ffebee)，誤導設為黃 (#fffde7)，正確準確設為綠 (#e8f5e9)。
-    直接輸出表格內容，不要 Markdown 符號。";
+  if (!API_KEY) return res.status(500).json({ error: "伺服器未配置 API_KEY" });
+  if (!image) return res.status(400).json({ error: "未接收到影像數據" });
 
   try {
+    // 核心修復：確保拿到的是純 Base64 字串（去掉可能存在的數組包裹）
+    const cleanBase64 = Array.isArray(image) ? (image.length > 1 ? image[1] : image[0]) : image;
+
     const response = await fetch(`https://generativelanguage.googleapis.com{API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: "image/jpeg", data: image } }
-          ]
+        contents:
         }]
       })
     });
 
     const data = await response.json();
-    if (data.error) throw new Error(data.error.message);
 
-    const tableHtml = data.candidates[0].content.parts[0].text;
-    res.status(200).json({ result: tableHtml });
+    if (data.error) {
+        return res.status(500).json({ error: `Google API 錯誤: ${data.error.message}` });
+    }
+
+    if (data.candidates && data.candidates[0].content.parts[0].text) {
+        let resultHtml = data.candidates[0].content.parts[0].text;
+        // 去掉 AI 可能會自動加上的 ```html 標籤
+        resultHtml = resultHtml.replace(/```html|```/g, '');
+        res.status(200).json({ result: resultHtml });
+    } else {
+        res.status(500).json({ error: "AI 暫時無法分析此內容，請試著拍清楚一點" });
+    }
 
   } catch (error) {
-    res.status(500).json({ error: `照妖鏡暫時失靈：${error.message}` });
+    res.status(500).json({ error: `後端異常：${error.message}` });
   }
 }
+
 
 
 
