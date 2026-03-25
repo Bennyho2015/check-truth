@@ -1,18 +1,17 @@
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>照妖鏡</title>
     <style>
         body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #121212; color: #fff; margin: 0; }
-        h1 { margin-top: 30px; font-size: 32px; color: #ffeb3b; }
-        /* 改回 4:3 比例，這在手機上最穩定 */
-        #box { width: 90vw; max-width: 500px; aspect-ratio: 4/3; background: #000; border-radius: 12px; overflow: hidden; border: 4px solid #444; }
-        video, #p { width: 100%; height: 100%; object-fit: cover; }
-        button { margin-top: 20px; padding: 18px; border-radius: 50px; border: none; font-weight: bold; font-size: 22px; cursor: pointer; width: 100%; max-width: 400px; }
+        h1 { margin-top: 20px; font-size: 32px; color: #ffeb3b; }
+        #box { width: 90vw; max-width: 500px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; border: 4px solid #444; position: relative; }
+        video, #p { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+        button { margin-top: 20px; padding: 18px; border-radius: 12px; border: none; font-weight: bold; font-size: 20px; cursor: pointer; width: 100%; max-width: 400px; }
         #result { margin-top: 20px; width: 100%; max-width: 800px; color: #333; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; }
-        td, th { border: 1px solid #ddd; padding: 10px; font-size: 14px; }
+        td { border: 1px solid #ddd; padding: 12px; font-size: 14px; line-height: 1.5; }
     </style>
 </head>
 <body>
@@ -22,38 +21,31 @@
         <img id="p" style="display:none;">
     </div>
     
-    <button id="s" style="background:#1a73e8; color:white;">📸 拍照</button>
+    <button id="s" style="background:#1a73e8; color:white;">📸 拍攝圖像</button>
     <button id="a" style="background:#34a853; color:white; display:none;">🚀 查察驗真假</button>
     
-    <div id="loading" style="display:none; color:#ffeb3b; margin-top:15px; font-weight:bold;">⏳ 正在查察，請稍候...</div>
+    <div id="loading" style="display:none; color:#ffeb3b; margin:15px 0; font-weight:bold;">⏳ 正在查察，請稍候...</div>
     <div id="result"></div>
 
     <script>
-        let imgData = null;
+        let pureBase64 = null;
         const v = document.getElementById('v'), p = document.getElementById('p');
         const sBtn = document.getElementById('s'), aBtn = document.getElementById('a');
 
-        // 最穩定的相機啟動代碼
-        async function start() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment" } 
-                });
-                v.srcObject = stream;
-                v.onloadedmetadata = () => v.play();
-            } catch (e) {
-                alert("請允許相機權限！點擊網址旁的『鎖頭』圖標進行設置。");
-            }
-        }
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(stream => { v.srcObject = stream; });
 
         sBtn.onclick = () => {
-            const c = document.createElement('canvas');
-            c.width = v.videoWidth; c.height = v.videoHeight;
-            c.getContext('2d').drawImage(v, 0, 0);
+            const canvas = document.createElement('canvas');
+            // 強制縮小 AI 分析用的圖片尺寸，確保連線不中斷
+            const scale = 0.7; 
+            canvas.width = v.videoWidth * scale;
+            canvas.height = v.videoHeight * scale;
+            canvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
             
-            // 壓縮圖片體積，確保傳輸成功
-            const url = c.toDataURL('image/jpeg', 0.6);
-            imgData = url.split(',')[1]; // 只拿 Base64 數據
+            // 壓縮質量 0.6，體積會變得很小
+            const url = canvas.toDataURL('image/jpeg', 0.6);
+            pureBase64 = url.split(',')[1]; // 只提取純 Base64 字串
             
             v.style.display = 'none'; 
             p.src = url; p.style.display = 'block';
@@ -63,27 +55,24 @@
         aBtn.onclick = async () => {
             document.getElementById('loading').style.display = 'block';
             document.getElementById('result').innerHTML = '';
-            aBtn.disabled = true;
             try {
                 const res = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: imgData })
+                    body: JSON.stringify({ image: pureBase64 })
                 });
                 const data = await res.json();
                 document.getElementById('result').innerHTML = data.result || data.error;
             } catch (e) {
-                document.getElementById('result').innerHTML = "連線異常，請檢查網絡";
+                document.getElementById('result').innerHTML = "<div style='color:white; background:red; padding:10px;'>傳輸失敗，請檢查網絡</div>";
             } finally {
                 document.getElementById('loading').style.display = 'none';
-                aBtn.disabled = false;
             }
         };
-
-        start();
     </script>
 </body>
 </html>
+
 
 
 
