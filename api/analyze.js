@@ -1,44 +1,44 @@
-// api/analyze.js (加固版)
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
+  if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+  
   const { image } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY;
 
-  if (!API_KEY) return res.status(500).json({ error: "环境变量 GEMINI_API_KEY 未配置" });
-  if (!image) return res.status(400).json({ error: "未接收到图片数据" });
+  // 這裡的指令決定了表格的格式
+  const prompt = `你是一個文稿核查專家「照妖鏡」。請分析圖片中的文字內容真偽。
+    要求：
+    1. 輸出一個 HTML 表格 (<table>)，包含三欄：
+       - 第一欄：【原文片段】
+       - 第二欄：【AI 簡要評議】
+       - 第三欄：【詳細理據】
+    2. 顏色標註：
+       - 嚴重偽造內容背景設為 #ffebee (淡紅)
+       - 誇張誤導內容背景設為 #fef7e0 (淡黃)
+       - 真實內容背景設為 #e6f4ea (淡綠)
+    3. 只輸出 <table> 標籤內容，不要 Markdown 符號，不要解釋，直接輸出表格。`;
 
   try {
-    // 确保处理纯 Base64 数据
-    const base64Data = Array.isArray(image) ? image : image;
-    
-    // 使用标准的 API URL
-    const url = `https://generativelanguage.googleapis.com{API_KEY}`;
-
-    const response = await fetch(url, {
+    const response = await fetch(`https://generativelanguage.googleapis.com{API_KEY}`, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents:
+        contents: [{
+          parts: [
+            { text: prompt },
+            { inline_data: { mime_type: "image/jpeg", data: image } }
+          ]
         }]
       })
     });
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || `Google API 响应错误: ${response.status}`);
-    }
-
     const data = await response.json();
-    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || "AI 无法识别内容";
-    
-    res.status(200).json({ result: resultText });
+    if (data.error) throw new Error(data.error.message);
+
+    const tableHtml = data.candidates[0].content.parts[0].text;
+    res.status(200).json({ result: tableHtml });
 
   } catch (error) {
-    // 关键：将具体的错误原因传回前端
-    res.status(500).json({ error: `连接 Google 失败: ${error.message}` });
+    res.status(500).json({ error: `照妖鏡暫時失靈：${error.message}` });
   }
 }
 
