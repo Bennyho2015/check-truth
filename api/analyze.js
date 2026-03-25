@@ -31,8 +31,8 @@ export default async function handler(req, res) {
         return res.status(200).json({ result: `<div style='color:red; background:white; padding:10px;'>【Google 報錯】: ${data.error.message}</div>` });
     }
 
-    if (data.candidates && data.candidates[0].content.parts[0].text) {
-        let resultHtml = data.candidates[0].content.parts[0].text;
+    if (data.candidates && data.candidates.content.parts.text) {
+        let resultHtml = data.candidates.content.parts.text;
         // 去掉 AI 可能會自動加上的 ```html 標籤
         resultHtml = resultHtml.replace(/```html|```/g, '');
         res.status(200).json({ result: resultHtml });
@@ -43,6 +43,7 @@ export default async function handler(req, res) {
     res.status(200).json({ result: `<div style='color:red; background:white; padding:10px;'>【後端異常】: ${error.message}</div>` });
   }
 }
+
 
 
 
