@@ -16,14 +16,9 @@
 </head>
 <body>
     <h1>照妖鏡 🔍</h1>
-    <div id="box">
-        <video id="v" autoplay playsinline muted></video>
-        <img id="p" style="display:none;">
-    </div>
-    
+    <div id="box"><video id="v" autoplay playsinline muted></video><img id="p" style="display:none;"></div>
     <button id="s" style="background:#1a73e8; color:white;">📸 拍攝圖像</button>
     <button id="a" style="background:#34a853; color:white; display:none;">🚀 查察驗真假</button>
-    
     <div id="loading" style="display:none; color:#ffeb3b; margin:15px 0; font-weight:bold;">⏳ 正在查察，請稍候...</div>
     <div id="result"></div>
 
@@ -32,23 +27,22 @@
         const v = document.getElementById('v'), p = document.getElementById('p');
         const sBtn = document.getElementById('s'), aBtn = document.getElementById('a');
 
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-            .then(stream => { v.srcObject = stream; });
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(stream => { v.srcObject = stream; });
 
         sBtn.onclick = () => {
             const canvas = document.createElement('canvas');
-            // 強制縮小 AI 分析用的圖片尺寸，確保連線不中斷
-            const scale = 0.7; 
+            // 核心修復：強制將圖片寬度縮小到 800px，這是傳輸最穩定的尺寸
+            const maxWidth = 800;
+            const scale = v.videoWidth > maxWidth ? maxWidth / v.videoWidth : 1;
             canvas.width = v.videoWidth * scale;
             canvas.height = v.videoHeight * scale;
             canvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
             
-            // 壓縮質量 0.6，體積會變得很小
-            const url = canvas.toDataURL('image/jpeg', 0.6);
-            pureBase64 = url.split(',')[1]; // 只提取純 Base64 字串
+            // 壓縮質量 0.5，圖片體積將只有幾十 KB
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+            pureBase64 = dataUrl.split(',')[1]; // 確保只拿純數據部分
             
-            v.style.display = 'none'; 
-            p.src = url; p.style.display = 'block';
+            v.style.display = 'none'; p.src = dataUrl; p.style.display = 'block';
             sBtn.style.display = 'none'; aBtn.style.display = 'block';
         };
 
@@ -64,7 +58,7 @@
                 const data = await res.json();
                 document.getElementById('result').innerHTML = data.result || data.error;
             } catch (e) {
-                document.getElementById('result').innerHTML = "<div style='color:white; background:red; padding:10px;'>傳輸失敗，請檢查網絡</div>";
+                document.getElementById('result').innerHTML = "<div style='color:white; background:red; padding:10px;'>傳輸失敗，請重試</div>";
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }
@@ -72,6 +66,7 @@
     </script>
 </body>
 </html>
+
 
 
 
