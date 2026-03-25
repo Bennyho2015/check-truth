@@ -3,29 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>照妖鏡 - 防騙避坑</title>
+    <title>照妖鏡 - 內容真偽核查</title>
     <style>
-        body { font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #121212; color: #fff; margin: 0; }
+        body { font-family: -apple-system, "PingFang HK", sans-serif; display: flex; flex-direction: column; align-items: center; padding: 15px; background: #121212; color: #fff; margin: 0; }
         h1 { margin-top: 20px; font-size: 32px; color: #ffeb3b; text-shadow: 0 0 10px rgba(255,235,59,0.5); }
-        /* 圓形鏡面設計 */
-        #container { width: 90vw; max-width: 450px; aspect-ratio: 1/1; border: 6px solid #444; border-radius: 50%; overflow: hidden; position: relative; background: #000; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        p { color: #aaa; font-size: 14px; margin-bottom: 10px; }
+        
+        /* 16:9 專業橫向高清畫框 */
+        #container { 
+            width: 95vw; 
+            max-width: 600px; 
+            aspect-ratio: 16 / 9; 
+            border: 4px solid #444; 
+            border-radius: 12px; 
+            overflow: hidden; 
+            position: relative; 
+            background: #000; 
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
         video, #preview { width: 100%; height: 100%; object-fit: cover; }
-        .controls { margin-top: 25px; width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 15px; }
-        button { padding: 18px; border: none; border-radius: 50px; font-weight: bold; font-size: 20px; cursor: pointer; transition: 0.3s; }
+        
+        .controls { margin-top: 20px; width: 95%; max-width: 500px; display: flex; flex-direction: column; gap: 12px; }
+        button { padding: 16px; border: none; border-radius: 50px; font-weight: bold; font-size: 20px; cursor: pointer; transition: 0.3s; }
+        
         .btn-shot { background: #1a73e8; color: white; }
         .btn-magic { background: #34a853; color: white; display: none; border: 2px solid #ffeb3b; }
-        #loading { display: none; color: #ffeb3b; margin: 15px 0; font-weight: bold; text-align: center; }
-        /* 表格結果區域 */
-        #result-area { width: 100%; max-width: 800px; margin-top: 20px; color: #333; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 14px; line-height: 1.5; }
+        .btn-retry { background: #333; color: #bbb; font-size: 14px; display: none; }
+        
+        #loading { display: none; color: #ffeb3b; margin: 15px 0; font-weight: bold; text-align: center; font-size: 18px; }
+        
+        /* 表格結果顯示區 */
+        #result-area { width: 100%; max-width: 900px; margin-top: 20px; color: #333; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 14px; line-height: 1.6; }
         th { background: #f2f2f2; font-weight: bold; }
         .error-box { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; width: 100%; }
     </style>
 </head>
 <body>
     <h1>照妖鏡 🔍</h1>
-    <p style="color:#aaa; font-size:14px; margin-bottom:15px;">對準文字拍照，真相立刻現形</p>
+    <p>對準文字，確認清晰後拍攝</p>
 
     <div id="container">
         <video id="video" autoplay playsinline muted></video>
@@ -33,11 +50,12 @@
     </div>
 
     <div class="controls">
-        <button id="shot-btn" class="btn-shot">📸 拍照</button>
-        <button id="magic-btn" class="btn-magic">✨ AI驗真假</button>
+        <button id="shot-btn" class="btn-shot">📸 拍攝高清圖像</button>
+        <button id="magic-btn" class="btn-magic">🚀 查察驗真假</button>
+        <button id="retry-btn" class="btn-retry">🔄 不清楚？重拍</button>
     </div>
 
-    <div id="loading">⏳ 正在查察真偽，請稍候...</div>
+    <div id="loading">⏳ 正在查察分析，請稍候...</div>
     <div id="result-area"></div>
 
     <script>
@@ -45,35 +63,58 @@
         const preview = document.getElementById('preview');
         const shotBtn = document.getElementById('shot-btn');
         const magicBtn = document.getElementById('magic-btn');
+        const retryBtn = document.getElementById('retry-btn');
         const resultArea = document.getElementById('result-area');
         const loading = document.getElementById('loading');
 
         let pureBase64 = null;
 
-        // 啟動相機
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-            .then(stream => { video.srcObject = stream; })
-            .catch(err => { resultArea.innerHTML = '<div class="error-box">請允許相機權限</div>'; });
+        // 啟動高清相機
+        async function initCamera() {
+            try {
+                const constraints = { 
+                    video: { 
+                        facingMode: "environment",
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    } 
+                };
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+            } catch (err) {
+                resultArea.innerHTML = '<div class="error-box">無法啟動高清相機，請檢查權限</div>';
+            }
+        }
 
-        // 拍照
+        // 拍照動作
         shotBtn.onclick = () => {
             const canvas = document.createElement('canvas');
-            const scale = 0.7; 
-            canvas.width = video.videoWidth * scale;
-            canvas.height = video.videoHeight * scale;
-            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
             
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-            pureBase64 = dataUrl.split(',')[1]; // 只取 Base64 內容
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            pureBase64 = dataUrl.split(','); // 關鍵修復：分離數據頭
             
-            preview.src = dataUrl;
             video.style.display = 'none';
+            preview.src = dataUrl;
             preview.style.display = 'block';
             shotBtn.style.display = 'none';
             magicBtn.style.display = 'block';
+            retryBtn.style.display = 'block';
         };
 
-        // 點擊「查察」呼叫後端 API
+        // 重拍動作
+        retryBtn.onclick = () => {
+            video.style.display = 'block';
+            preview.style.display = 'none';
+            shotBtn.style.display = 'block';
+            magicBtn.style.display = 'none';
+            retryBtn.style.display = 'none';
+            resultArea.innerHTML = '';
+        };
+
+        // 執行查察
         magicBtn.onclick = async () => {
             loading.style.display = 'block';
             resultArea.innerHTML = '';
@@ -87,8 +128,6 @@
                 });
                 const data = await response.json();
                 if (data.error) throw new Error(data.error);
-                
-                // 這裡會直接顯示 AI 產生的 HTML 表格
                 resultArea.innerHTML = data.result;
             } catch (err) {
                 resultArea.innerHTML = `<div class="error-box">查察失敗：${err.message}</div>`;
@@ -97,9 +136,12 @@
                 magicBtn.disabled = false;
             }
         };
+
+        initCamera();
     </script>
 </body>
 </html>
+
 
 
 
