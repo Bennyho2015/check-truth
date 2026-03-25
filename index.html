@@ -46,25 +46,27 @@
             sBtn.style.display = 'none'; aBtn.style.display = 'block';
         };
 
-        aBtn.onclick = async () => {
-            loading.style.display = 'block'; resDiv.innerHTML = '';
-            try {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: pureBase64 })
-                });
-                
-                if (!response.ok) {
-                    resDiv.innerHTML = `<div style="background:red; color:white; padding:10px;">連線失敗：狀態碼 ${response.status}</div>`;
-                    return;
-                }
-                const data = await response.json();
-                resDiv.innerHTML = data.result || data.error;
-            } catch (e) {
-                resDiv.innerHTML = `<div style="background:red; color:white; padding:10px;">傳輸異常：${e.message}</div>`;
-            } finally { loading.style.display = 'none'; }
-        };
+aBtn.onclick = async () => {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('result').innerHTML = '';
+    try {
+        const res = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: pureBase64 })
+        });
+        
+        // 核心：即使後端報錯，我們也要嘗試讀取文字內容
+        const data = await res.json();
+        document.getElementById('result').innerHTML = data.result || data.error;
+        
+    } catch (e) {
+        document.getElementById('result').innerHTML = "<div style='color:white; background:red; padding:10px;'>連線異常，請手動刷新網頁再試</div>";
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+};
+
     </script>
 </body>
 </html>
