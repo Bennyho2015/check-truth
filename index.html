@@ -46,9 +46,9 @@
             sBtn.style.display = 'none'; aBtn.style.display = 'block';
         };
 
+// 請確保 aBtn.onclick 邏輯如下：
 aBtn.onclick = async () => {
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('result').innerHTML = '';
+    loading.style.display = 'block'; result.innerHTML = '';
     try {
         const res = await fetch('/api/analyze', {
             method: 'POST',
@@ -56,16 +56,18 @@ aBtn.onclick = async () => {
             body: JSON.stringify({ image: pureBase64 })
         });
         
-        // 核心：即使後端報錯，我們也要嘗試讀取文字內容
         const data = await res.json();
-        document.getElementById('result').innerHTML = data.result || data.error;
+        // 只要後端有返回文字，我們就顯示
+        result.innerHTML = data.result || data.error;
         
     } catch (e) {
-        document.getElementById('result').innerHTML = "<div style='color:white; background:red; padding:10px;'>連線異常，請手動刷新網頁再試</div>";
+        // 如果抓到異常，顯示具體原因
+        result.innerHTML = `<div style="background:red; color:white; padding:10px;">連線異常：${e.message}<br>請檢查手機網絡並刷新網頁。</div>`;
     } finally {
-        document.getElementById('loading').style.display = 'none';
+        loading.style.display = 'none';
     }
 };
+
 
     </script>
 </body>
