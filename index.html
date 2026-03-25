@@ -1,77 +1,21 @@
-<!DOCTYPE html>
-<html lang="zh-HK">
-<head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>照妖鏡</title>
-    <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 15px; background: #121212; color: #fff; margin: 0; }
-        h1 { margin-top: 20px; font-size: 32px; color: #ffeb3b; text-shadow: 0 0 10px rgba(255,235,59,0.5); }
-        #box { width: 95vw; max-width: 600px; aspect-ratio: 16/9; border: 4px solid #444; border-radius: 12px; overflow: hidden; position: relative; background: #000; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
-        video, #p { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
-        .controls { margin-top: 20px; width: 95%; max-width: 500px; display: flex; flex-direction: column; gap: 12px; }
-        button { padding: 16px; border: none; border-radius: 50px; font-weight: bold; font-size: 20px; cursor: pointer; transition: 0.3s; }
-        .btn-shot { background: #1a73e8; color: white; }
-        .btn-magic { background: #34a853; color: white; display: none; border: 2px solid #ffeb3b; }
-        #loading { display: none; color: #ffeb3b; margin: 15px 0; font-weight: bold; text-align: center; }
-        #result { width: 100%; max-width: 900px; margin-top: 20px; color: #333; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; }
-        td { border: 1px solid #ddd; padding: 12px; font-size: 14px; line-height: 1.5; }
-    </style>
-</head>
-<body>
-    <h1>照妖鏡 🔍</h1>
-    <div id="box"><video id="v" autoplay playsinline muted></video><img id="p" style="display:none;"></div>
-    <div class="controls">
-        <button id="s" class="btn-shot">📸 拍攝高清圖像</button>
-        <button id="a" class="btn-magic">🚀 查察驗真假</button>
-    </div>
-    <div id="loading">⏳ 正在查察分析，請稍候...</div>
-    <div id="result"></div>
-
-    <script>
-        let pureBase64 = null;
-        const v = document.getElementById('v'), p = document.getElementById('p'), sBtn = document.getElementById('s'), aBtn = document.getElementById('a'), resDiv = document.getElementById('result'), loading = document.getElementById('loading');
-
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(stream => { v.srcObject = stream; });
-
-        sBtn.onclick = () => {
-            const canvas = document.createElement('canvas');
-            const maxWidth = 1024;
-            const scale = v.videoWidth > maxWidth ? maxWidth / v.videoWidth : 1;
-            canvas.width = v.videoWidth * scale; canvas.height = v.videoHeight * scale;
-            canvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
-            pureBase64 = dataUrl.split(',')[1]; // 確保精確獲取 Base64 段
-            v.style.display = 'none'; p.src = dataUrl; p.style.display = 'block';
-            sBtn.style.display = 'none'; aBtn.style.display = 'block';
-        };
-
-// 請確保 aBtn.onclick 邏輯如下：
-aBtn.onclick = async () => {
-    loading.style.display = 'block'; result.innerHTML = '';
-    try {
-        const res = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: pureBase64 })
-        });
-        
-        const data = await res.json();
-        // 只要後端有返回文字，我們就顯示
-        result.innerHTML = data.result || data.error;
-        
-    } catch (e) {
-        // 如果抓到異常，顯示具體原因
-        result.innerHTML = `<div style="background:red; color:white; padding:10px;">連線異常：${e.message}<br>請檢查手機網絡並刷新網頁。</div>`;
-    } finally {
-        loading.style.display = 'none';
-    }
+<!-- 請找到 shotBtn.onclick 並替換這部分 -->
+shotBtn.onclick = () => {
+    const canvas = document.createElement('canvas');
+    // 強制縮小到 800 寬度，這對 AI 識字足夠，但體積會縮小 10 倍
+    const maxWidth = 800;
+    const scale = v.videoWidth > maxWidth ? maxWidth / v.videoWidth : 1;
+    canvas.width = v.videoWidth * scale;
+    canvas.height = v.videoHeight * scale;
+    canvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
+    
+    // 質量設為 0.5，體積極小，連線極穩
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+    pureBase64 = dataUrl.split(',')[1]; // 只拿純數據
+    
+    v.style.display = 'none'; p.src = dataUrl; p.style.display = 'block';
+    sBtn.style.display = 'none'; aBtn.style.display = 'block';
 };
 
-
-    </script>
-</body>
-</html>
 
 
 
