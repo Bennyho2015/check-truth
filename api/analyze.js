@@ -8,9 +8,7 @@ export default async function handler(req, res) {
   if (!image) return res.status(400).json({ error: "未接收到影像數據" });
 
   try {
-    // 核心修復：確保拿到的是純 Base64 字串（去掉可能存在的數組包裹）
-    const cleanBase64 = Array.isArray(image) ? (image.length > 1 ? image[1] : image[0]) : image;
-
+    // 這裡直接接收前端傳來的純 Base64 字串
     const response = await fetch(`https://generativelanguage.googleapis.com{API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -21,24 +19,20 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-
-    if (data.error) {
-        return res.status(500).json({ error: `Google API 錯誤: ${data.error.message}` });
-    }
+    if (data.error) throw new Error(data.error.message);
 
     if (data.candidates && data.candidates[0].content.parts[0].text) {
         let resultHtml = data.candidates[0].content.parts[0].text;
-        // 去掉 AI 可能會自動加上的 ```html 標籤
-        resultHtml = resultHtml.replace(/```html|```/g, '');
+        resultHtml = resultHtml.replace(/```html|```/g, ''); // 清理多餘標籤
         res.status(200).json({ result: resultHtml });
     } else {
         res.status(500).json({ error: "AI 暫時無法分析此內容，請試著拍清楚一點" });
     }
-
   } catch (error) {
     res.status(500).json({ error: `後端異常：${error.message}` });
   }
 }
+
 
 
 
