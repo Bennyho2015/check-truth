@@ -37,12 +37,13 @@ export default async function handler(req, res) {
         resultHtml = resultHtml.replace(/```html|```/g, '');
         res.status(200).json({ result: resultHtml });
     } else {
-        res.status(200).json({ result: "AI 暫時無法生成分析報告，請嘗試拍得更清晰一些。" });
+        res.status(200).json({ result: "AI 暫時無法生成分析，請拍得更清楚。" });
     }
   } catch (error) {
     res.status(200).json({ result: `<div style='color:red; background:white; padding:10px;'>【後端異常】: ${error.message}</div>` });
   }
 }
+
 
 
 
