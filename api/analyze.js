@@ -1,40 +1,37 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-module.exports = async (req, res) => {
-  // 允许跨域
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST');
-  
-  if (req.method !== 'POST') return res.status(200).json({ result: "请拍照后点击查核" });
+// 强制锁死：这行代码告诉 Vercel 必须使用边缘计算，能极大增加绕过地区限制的概率
+export const config = {
+  runtime: 'edge',
+  regions: ['iad1'], // 强制华盛顿节点
+};
+
+export default async function handler(req) {
+  if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
 
   try {
-    const { image } = req.body;
-    if (!image) return res.status(400).json({ error: "没收到图片数据" });
-
-    // 1. 初始化 AI
+    const { image } = await req.json();
     const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-    if (!apiKey) throw new Error("API Key 未配置");
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    // 使用 flash 模型，速度最快且不容易超时
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    // 2. 发送请求
     const prompt = "请分析图中文字，识别关键陈述，并以 HTML 表格输出：【原文】、【真实性】、【理由】。只返回 <table> 标签。";
     const result = await model.generateContent([
       prompt,
       { inlineData: { data: image, mimeType: "image/jpeg" } }
     ]);
 
-    const response = await result.response;
-    res.status(200).json({ result: response.text() });
+    const text = await result.response.text();
+    return new Response(JSON.stringify({ result: text }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
 
   } catch (error) {
-    console.error(error);
-    // 把具体错误传回屏幕，方便我们调试
-    res.status(500).json({ error: "AI 报错: " + error.message });
+    return new Response(JSON.stringify({ error: "AI 报错: " + error.message }), { status: 500 });
   }
-};
+}
 
 
 
