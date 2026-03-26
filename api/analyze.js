@@ -1,37 +1,43 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-
-// --- 暴力锁死命令开始 ---
-export const config = {
-  regions: ['iad1'], // 强制华盛顿节点
-};
-// --- 暴力锁死命令结束 ---
-
-module.exports = async (req, res) => {
+// api/analyze.js
+export default async function handler(req, res) {
+  // 设置跨域头
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST');
-  
+
   if (req.method !== 'POST') return res.status(200).json({ result: "请拍照" });
 
   try {
     const { image } = req.body;
-    if (!image) return res.status(200).json({ error: "没收到图片" });
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
-    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    if (!apiKey) return res.status(500).json({ error: "API Key 未配置" });
 
-    const prompt = "你是一个真相查核助手。请分析图中文字，识别关键陈述，并以 HTML 表格形式输出：【原文】、【真实性】、【查证理由】。只返回 <table> 标签内容。";
-    const result = await model.generateContent([
-      prompt,
-      { inlineData: { data: image, mimeType: "image/jpeg" } }
-    ]);
+    // 直接通过 fetch 访问 Google API，避开 Vercel 库的地区限制检测
+    const url = `https://generativelanguage.googleapis.com{apiKey}`;
 
-    const text = await result.response.text();
-    res.status(200).json({ result: text });
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents:
+        }]
+      })
+    });
+
+    const data = await response.json();
+    
+    // 解析返回的数据
+    if (data.candidates && data.candidates[0].content.parts[0].text) {
+      res.status(200).json({ result: data.candidates[0].content.parts[0].text });
+    } else {
+      res.status(500).json({ error: "AI 返回异常: " + JSON.stringify(data) });
+    }
 
   } catch (error) {
-    res.status(500).json({ error: "AI 报错: " + error.message });
+    res.status(500).json({ error: "连接失败: " + error.message });
   }
-};
+}
+
 
 
 
