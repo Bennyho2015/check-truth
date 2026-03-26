@@ -1,5 +1,4 @@
 {
-  "version": 2,
-  "regions": ["iad1"],
-  "public": true
+  "regions": ["iad1"]
 }
+
