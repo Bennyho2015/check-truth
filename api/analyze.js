@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
     // 检查环境变量
     const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'Vercel 环境变量未设置 API KEY' });
+    if (!apiKey) return res.status(500).json({ error: 'Vercel 环境变量未设置 API KEY' })；
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
