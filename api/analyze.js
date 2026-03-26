@@ -1,48 +1,36 @@
 // api/analyze.js
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 export default async function handler(req, res) {
-  // 1. 強制設置返回格式為 JSON
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
-
-  const { image } = req.body;
-  // 試圖讀取密鑰，如果讀不到就報錯
-  const API_KEY = process.env.GEMINI_API_KEY;
-
-  if (!API_KEY) {
-    return res.status(200).json({ result: "<div style='color:red; background:white; padding:10px;'>【關鍵錯誤】Vercel 沒找到您的 API Key。請確保在 Vercel Settings 設置了 GEMINI_API_KEY 並點擊了 Redeploy。</div>" });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: '请使用 POST 请求' });
 
   try {
-    // 2. 獲取純淨 Base64
-    const cleanBase64 = Array.isArray(image) ? (image.length > 1 ? image : image) : image;
+    const { image } = req.body;
+    if (!image) return res.status(400).json({ error: '未接收到图片，请重拍' });
 
-    const response = await fetch(`https://generativelanguage.googleapis.com{API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents:
-        }]
-      })
-    });
+    // 检查环境变量
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'Vercel 环境变量未设置 API KEY' });
 
-    const data = await response.json();
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    // 3. 捕捉 Google 的具體錯誤
-    if (data.error) {
-        return res.status(200).json({ result: `<div style='color:red; background:white; padding:10px;'>【Google 報錯】: ${data.error.message}</div>` });
-    }
+    const prompt = "你是一个真相查核助手。请分析图中文字，识别关键陈述，并以 HTML 表格形式输出：【原文】、【真实性】（真/假/误导）、【查证理由】。只返回 <table> 标签内容。";
 
-    if (data.candidates && data.candidates.content.parts.text) {
-        let resultHtml = data.candidates.content.parts.text;
-        // 去掉 AI 可能會自動加上的 ```html 標籤
-        resultHtml = resultHtml.replace(/```html|```/g, '');
-        res.status(200).json({ result: resultHtml });
-    } else {
-        res.status(200).json({ result: "AI 暫時無法生成分析，請拍得更清楚。" });
-    }
+    const result = await model.generateContent([
+      prompt,
+      { inlineData: { data: image, mimeType: "image/jpeg" } },
+    ]);
+
+    const text = await result.response.text();
+    res.status(200).json({ result: text });
+
   } catch (error) {
-    res.status(200).json({ result: `<div style='color:red; background:white; padding:10px;'>【後端異常】: ${error.message}</div>` });
+    console.error(error);
+    res.status(500).json({ error: "AI 思考罢工了: " + error.message });
   }
 }
+
 
 
 
