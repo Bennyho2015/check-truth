@@ -22,49 +22,70 @@
     <div id="loading" style="display:none; color:#ffeb3b; margin:15px 0; font-weight:bold;">⏳ 正在查察，請稍候...</div>
     <div id="result"></div>
 
-    <script>
-        let pureBase64 = null;
-        const v = document.getElementById('v'), p = document.getElementById('p'), sBtn = document.getElementById('s'), aBtn = document.getElementById('a'), resDiv = document.getElementById('result'), loading = document.getElementById('loading');
+<script>
+    let finalBase64 = null; // 儲存處理後的圖片
+    const v = document.getElementById('v'), p = document.getElementById('p'), sBtn = document.getElementById('s'), aBtn = document.getElementById('a'), resDiv = document.getElementById('result'), loading = document.getElementById('loading');
 
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(stream => { v.srcObject = stream; });
+    // 啟動相機
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(stream => { v.srcObject = stream; })
+        .catch(err => { alert("無法開啟相機：" + err); });
 
-        sBtn.onclick = () => {
-            const canvas = document.createElement('canvas');
-            const scale = 0.6; // 進一步壓縮
-            canvas.width = v.videoWidth * scale; canvas.height = v.videoHeight * scale;
-            canvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
-            pureBase64 = dataUrl.split(','); 
-            v.style.display = 'none'; p.src = dataUrl; p.style.display = 'block';
-            sBtn.style.display = 'none'; aBtn.style.display = 'block';
-        };
+    // 拍照並壓縮
+    sBtn.onclick = () => {
+        const canvas = document.createElement('canvas');
+        // 自動調整大小：限制寬度最大 1024px，高度等比例縮放
+        const maxW = 1024;
+        let w = v.videoWidth;
+        let h = v.videoHeight;
+        if (w > maxW) {
+            h = Math.round((h * maxW) / w);
+            w = maxW;
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(v, 0, 0, w, h);
+        
+        // 壓縮質量設為 0.7 (兼顧清晰度與體積)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        finalBase64 = dataUrl.split(',')[1]; // 只取 Base64 內容，不含開頭的 data:image/jpeg;base64,
+        
+        v.style.display = 'none'; 
+        p.src = dataUrl; 
+        p.style.display = 'block';
+        sBtn.style.display = 'none'; 
+        aBtn.style.display = 'block';
+    };
 
-        aBtn.onclick = async () => {
-            loading.style.display = 'block'; resDiv.innerHTML = '';
-            try {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: pureBase64 })
-                });
+    // 發送請求
+    aBtn.onclick = async () => {
+        loading.style.display = 'block'; 
+        resDiv.innerHTML = '';
+        aBtn.disabled = true; // 防止重複點擊
+        
+        try {
+            const response = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: finalBase64 })
+            });
 
-                // 核心改進：如果伺服器報錯（500/404等），獲取它的文字內容
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    resDiv.innerHTML = `<div style="background:white; color:red; padding:10px;">伺服器出錯 (狀態碼 ${response.status})：${errorText.substring(0, 100)}...</div>`;
-                    return;
-                }
+            const data = await response.json();
+            if (response.ok) {
+                resDiv.innerHTML = `<div style="background:white; color:#333; padding:15px; border-radius:8px; line-height:1.6;">${data.result}</div>`;
+            } else {
+                resDiv.innerHTML = `<div style="background:white; color:red; padding:10px;">出錯：${data.error || '未知錯誤'}</div>`;
+            }
+        } catch (e) {
+            resDiv.innerHTML = `<div style="background:white; color:red; padding:10px;">連線異常：${e.message}</div>`;
+        } finally { 
+            loading.style.display = 'none'; 
+            aBtn.disabled = false;
+        }
+    };
+</script>
 
-                const data = await response.json();
-                resDiv.innerHTML = data.result || `<div style="color:red; background:white;">${data.error}</div>`;
-            } catch (e) {
-                // 這裡現在只會攔截「真正的網絡斷開」
-                resDiv.innerHTML = `<div style="background:white; color:red; padding:10px;">連線異常：${e.message}</div>`;
-            } finally { loading.style.display = 'none'; }
-        };
-    </script>
-</body>
-</html>
 
 
 
