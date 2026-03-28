@@ -21,7 +21,7 @@ export default async function handler(req, res) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                "model": "meta-llama/llama-3.2-90b-vision-instruct", // 修改這裡
+                "model": "google/gemini-pro-1.5", // 修改這裡
                 "messages": [
                     {
                         "role": "user",
