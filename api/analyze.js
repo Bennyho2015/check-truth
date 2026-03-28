@@ -21,7 +21,7 @@ export default async function handler(req, res) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                "model": "openai/gpt-4o-mini", // 修改這裡
+                "model": "anthropic/claude-3-haiku", // 修改這裡
                 "messages": [
                     {
                         "role": "user",
