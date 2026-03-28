@@ -21,7 +21,7 @@ export default async function handler(req, res) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                "model":  "google/gemini-flash-1.5-exp", // 修改這裡
+                "model":  "google/gemini-2.0-flash-001", // 修改這裡
                 "messages": [
                     {
                         "role": "user",
